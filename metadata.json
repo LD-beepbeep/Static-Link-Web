@@ -1,0 +1,5 @@
+{
+  "name": "StaticLink Offline Bundle Sharer",
+  "description": "An offline-first, privacy-focused web application to create, manage, and share portable bundles of links, notes, and files. All data is stored locally in your browser, with no accounts or cloud storage required.",
+  "requestFramePermissions": []
+}
