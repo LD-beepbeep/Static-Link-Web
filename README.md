@@ -1,20 +1,23 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+🚀 StaticLink
 
-# Run and deploy your AI Studio app
+Bundle links, notes & files — share instantly with no fuss, no cloud, no accounts. Offline-first, privacy-focused, and open source.
 
-This contains everything you need to run your app locally.
+✨ Features
 
-View your app in AI Studio: https://ai.studio/apps/drive/1yk6atNt-23-SkHd6Msp46xwm0yQ_Fas3
+📦 Bundle anything: links, notes, pics
 
-## Run Locally
+📶 Share instantly via QR code or small file
 
-**Prerequisites:**  Node.js
+🔒 Fully offline, no logins, no ads
 
+🎨 Simple, clean, and beautiful UI
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+🤝 Open source and welcoming contributions
+
+🤝 Contributing
+
+Got ideas or fixes? Pull requests and issues are welcome! Let’s keep it simple, powerful, and fun.
+
+📄 License
+
+MIT License — see the LICENSE file for details.
