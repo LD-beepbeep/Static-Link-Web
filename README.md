@@ -2,6 +2,9 @@
 
 Bundle links, notes & files — share instantly with no fuss, no cloud, no accounts. Offline-first, privacy-focused, and open source.
 
+
+---
+
 ✨ Features
 
 📦 Bundle anything: links, notes, pics
@@ -14,10 +17,18 @@ Bundle links, notes & files — share instantly with no fuss, no cloud, no accou
 
 🤝 Open source and welcoming contributions
 
+---
+
 🤝 Contributing
 
-Got ideas or fixes? Pull requests and issues are welcome! Let’s keep it simple, powerful, and fun.
+Got ideas or fixes? Pull requests and issues are welcome!
+Let’s keep it simple, powerful, and fun.
+
+
+---
 
 📄 License
 
 MIT License — see the LICENSE file for details.
+
+---
