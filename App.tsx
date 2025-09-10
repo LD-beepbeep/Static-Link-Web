@@ -3,6 +3,8 @@ import HomeScreen from './screens/HomeScreen';
 import BundleEditorScreen from './screens/BundleEditorScreen';
 import ShareScreen from './screens/ShareScreen';
 import { Screen } from './types';
+import { ThemeProvider } from './contexts/ThemeContext';
+import { Header } from './components/Header';
 
 const App: React.FC = () => {
   const [currentScreen, setCurrentScreen] = useState<Screen>(Screen.HOME);
@@ -37,13 +39,11 @@ const App: React.FC = () => {
         if (activeBundleId) {
           return <BundleEditorScreen bundleId={activeBundleId} onBack={navigateHome} onNavigateToShare={navigateToShare} />;
         }
-        // Fallback to home if no ID
         return <HomeScreen onNavigateToEditor={navigateToEditor} onNavigateToShare={navigateToShare} />;
       case Screen.SHARE:
         if (activeBundleId) {
           return <ShareScreen bundleId={activeBundleId} onBack={navigateBackFromShare} />;
         }
-         // Fallback to home if no ID
         return <HomeScreen onNavigateToEditor={navigateToEditor} onNavigateToShare={navigateToShare} />;
       case Screen.HOME:
       default:
@@ -52,9 +52,14 @@ const App: React.FC = () => {
   };
 
   return (
-    <main className="min-h-screen">
-      {renderScreen()}
-    </main>
+    <ThemeProvider>
+      <div className="flex flex-col min-h-screen bg-background">
+        <Header />
+        <main className="flex-grow">
+          {renderScreen()}
+        </main>
+      </div>
+    </ThemeProvider>
   );
 };
 

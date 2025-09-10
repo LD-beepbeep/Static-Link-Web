@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useBundles } from '../hooks/useBundles';
 import { ItemType } from '../types';
@@ -7,6 +6,7 @@ import { IconArrowLeft, IconChevronDown, IconChevronUp, IconDownload, IconFile, 
 import { AddItemForms } from '../components/AddItemForms';
 import { base64ToBlob } from '../services/bundleService';
 import saveAs from 'file-saver';
+import Modal from '../components/Modal';
 
 interface BundleEditorScreenProps {
   bundleId: string;
@@ -18,6 +18,7 @@ const BundleEditorScreen: React.FC<BundleEditorScreenProps> = ({ bundleId, onBac
   const { getBundle, updateBundle, removeItemFromBundle, moveItemInBundle } = useBundles();
   const bundle = getBundle(bundleId);
   const [title, setTitle] = useState(bundle?.title || '');
+  const [itemToDelete, setItemToDelete] = useState<BundleItem | null>(null);
 
   useEffect(() => {
     setTitle(bundle?.title || '');
@@ -35,12 +36,19 @@ const BundleEditorScreen: React.FC<BundleEditorScreenProps> = ({ bundleId, onBac
     }
   };
 
+  const handleDeleteConfirm = () => {
+    if(itemToDelete && bundle) {
+        removeItemFromBundle(bundle.id, itemToDelete.id);
+        setItemToDelete(null);
+    }
+  }
+
   if (!bundle) {
     return (
       <div className="flex justify-center items-center h-screen">
         <div className="text-center">
             <div className="w-16 h-16 border-4 border-dashed rounded-full animate-spin border-primary mx-auto"></div>
-            <p className="mt-4">Loading bundle...</p>
+            <p className="mt-4 text-muted-foreground">Loading bundle...</p>
         </div>
       </div>
     );
@@ -66,17 +74,17 @@ const BundleEditorScreen: React.FC<BundleEditorScreenProps> = ({ bundleId, onBac
       switch (item.type) {
         case ItemType.LINK:
           const link = item as LinkItem;
-          return <p className="text-sm text-blue-500 truncate hover:underline"><a href={link.url} target="_blank" rel="noopener noreferrer">{link.url}</a></p>;
+          return <p className="text-sm text-primary truncate hover:underline"><a href={link.url} target="_blank" rel="noopener noreferrer">{link.url}</a></p>;
         case ItemType.NOTE:
           const note = item as NoteItem;
-          return <p className="text-sm text-slate-600 dark:text-slate-300 whitespace-pre-wrap">{note.text.substring(0, 100)}{note.text.length > 100 ? '...' : ''}</p>;
+          return <p className="text-sm text-muted-foreground whitespace-pre-wrap">{note.text.substring(0, 100)}{note.text.length > 100 ? '...' : ''}</p>;
         case ItemType.FILE:
           const file = item as FileItem;
           return (
             <div className="flex items-center gap-2">
-              <IconFile size={16} className="text-slate-500" />
-              <span className="text-sm text-slate-600 dark:text-slate-300">{file.filename}</span>
-              <span className="text-xs text-slate-400 dark:text-slate-500">({(file.size / 1024).toFixed(2)} KB)</span>
+              <IconFile size={16} className="text-muted-foreground" />
+              <span className="text-sm text-foreground">{file.filename}</span>
+              <span className="text-xs text-muted-foreground">({(file.size / 1024).toFixed(2)} KB)</span>
             </div>
           );
         default:
@@ -94,24 +102,24 @@ const BundleEditorScreen: React.FC<BundleEditorScreenProps> = ({ bundleId, onBac
     };
     
     return (
-      <div className="bg-white dark:bg-slate-800 p-4 rounded-lg shadow-md flex items-start gap-4 transition-shadow hover:shadow-lg">
-        <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center bg-slate-100 dark:bg-slate-700 rounded-full">
+      <div className="bg-card p-4 rounded-lg border border-border flex items-start gap-4 transition-shadow hover:shadow-md">
+        <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center bg-accent rounded-full">
             {getItemIcon()}
         </div>
         <div className="flex-grow min-w-0">
-          <h4 className="font-semibold text-slate-800 dark:text-slate-100 truncate">{item.title}</h4>
+          <h4 className="font-semibold text-card-foreground truncate">{item.title}</h4>
           {renderItemContent()}
         </div>
         <div className="flex items-center gap-1 flex-shrink-0">
-            {item.type === ItemType.FILE && <button onClick={() => handleDownloadFile(item)} className="p-2 text-slate-500 hover:text-primary dark:hover:text-primary-light rounded-full hover:bg-slate-100 dark:hover:bg-slate-700"><IconDownload size={18} /></button>}
-            {item.type === ItemType.LINK && <button onClick={() => handleCopy(item.url)} className="p-2 text-slate-500 hover:text-primary dark:hover:text-primary-light rounded-full hover:bg-slate-100 dark:hover:bg-slate-700">{copied ? <IconCheck size={18} className="text-green-500" /> : <IconCopy size={18} />}</button>}
-            {item.type === ItemType.NOTE && <button onClick={() => handleCopy(item.text)} className="p-2 text-slate-500 hover:text-primary dark:hover:text-primary-light rounded-full hover:bg-slate-100 dark:hover:bg-slate-700">{copied ? <IconCheck size={18} className="text-green-500" /> : <IconCopy size={18} />}</button>}
+            {item.type === ItemType.FILE && <button title="Download" onClick={() => handleDownloadFile(item)} className="p-2 text-muted-foreground hover:text-primary rounded-full hover:bg-accent"><IconDownload size={18} /></button>}
+            {item.type === ItemType.LINK && <button title="Copy URL" onClick={() => handleCopy(item.url)} className="p-2 text-muted-foreground hover:text-primary rounded-full hover:bg-accent">{copied ? <IconCheck size={18} className="text-green-500" /> : <IconCopy size={18} />}</button>}
+            {item.type === ItemType.NOTE && <button title="Copy Text" onClick={() => handleCopy(item.text)} className="p-2 text-muted-foreground hover:text-primary rounded-full hover:bg-accent">{copied ? <IconCheck size={18} className="text-green-500" /> : <IconCopy size={18} />}</button>}
 
-            <div className="flex flex-col border-l border-slate-200 dark:border-slate-700 ml-1 pl-1">
-                <button disabled={isFirst} onClick={() => moveItemInBundle(bundleId, index, index-1)} className="p-1 disabled:opacity-30 disabled:cursor-not-allowed text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"><IconChevronUp size={16}/></button>
-                <button disabled={isLast} onClick={() => moveItemInBundle(bundleId, index, index+1)} className="p-1 disabled:opacity-30 disabled:cursor-not-allowed text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"><IconChevronDown size={16}/></button>
+            <div className="flex flex-col border-l border-border ml-1 pl-1">
+                <button title="Move Up" disabled={isFirst} onClick={() => moveItemInBundle(bundleId, index, index-1)} className="p-1 disabled:opacity-30 disabled:cursor-not-allowed text-muted-foreground hover:text-foreground"><IconChevronUp size={16}/></button>
+                <button title="Move Down" disabled={isLast} onClick={() => moveItemInBundle(bundleId, index, index+1)} className="p-1 disabled:opacity-30 disabled:cursor-not-allowed text-muted-foreground hover:text-foreground"><IconChevronDown size={16}/></button>
             </div>
-            <button onClick={() => removeItemFromBundle(bundle.id, item.id)} className="p-2 text-slate-500 hover:text-red-500 dark:hover:text-red-400 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700">
+            <button title="Delete Item" onClick={() => setItemToDelete(item)} className="p-2 text-muted-foreground hover:text-destructive rounded-full hover:bg-accent">
                 <IconTrash size={18} />
             </button>
         </div>
@@ -124,7 +132,7 @@ const BundleEditorScreen: React.FC<BundleEditorScreenProps> = ({ bundleId, onBac
       <header className="mb-6">
         <button onClick={onBack} className="flex items-center gap-2 text-sm font-medium text-primary hover:underline mb-4">
           <IconArrowLeft size={16} />
-          Back to Bundles
+          Back to My Bundles
         </button>
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <input
@@ -132,13 +140,17 @@ const BundleEditorScreen: React.FC<BundleEditorScreenProps> = ({ bundleId, onBac
             value={title}
             onChange={handleTitleChange}
             onBlur={handleTitleBlur}
-            className="text-3xl font-bold bg-transparent border-b-2 border-transparent focus:border-primary focus:outline-none w-full text-slate-900 dark:text-slate-50"
+            onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
+            className="text-3xl font-bold bg-transparent focus:outline-none w-full text-foreground -ml-1 p-1 rounded-md focus:bg-accent"
             aria-label="Bundle Title"
           />
-          <button onClick={() => onNavigateToShare(bundle.id)} className="flex-shrink-0 flex items-center gap-2 px-4 py-2 font-semibold text-white bg-secondary rounded-md hover:bg-secondary-hover shadow-sm">
-            <IconShare2 size={18} />
-            Share / Export
-          </button>
+          <div className="flex items-center gap-4 flex-shrink-0 w-full sm:w-auto justify-between">
+            <span className="text-sm font-medium text-muted-foreground whitespace-nowrap bg-muted px-3 py-1.5 rounded-full">{bundle.items.length} {bundle.items.length === 1 ? 'item' : 'items'}</span>
+            <button onClick={() => onNavigateToShare(bundle.id)} className="flex-shrink-0 flex items-center gap-2 px-4 py-2 font-semibold text-secondary-foreground bg-secondary rounded-md hover:bg-secondary/90 shadow-sm transition-colors">
+              <IconShare2 size={18} />
+              Share / Export
+            </button>
+          </div>
         </div>
       </header>
 
@@ -148,12 +160,25 @@ const BundleEditorScreen: React.FC<BundleEditorScreenProps> = ({ bundleId, onBac
         {bundle.items.length > 0 ? (
           bundle.items.map((item, index) => <ItemCard key={item.id} item={item} index={index} />)
         ) : (
-          <div className="text-center py-16 px-6 bg-white dark:bg-slate-800/50 rounded-lg border-2 border-dashed border-slate-300 dark:border-slate-700">
-            <h3 className="text-xl font-semibold text-slate-800 dark:text-slate-100">This bundle is empty</h3>
-            <p className="mt-2 text-slate-500 dark:text-slate-400">Add a link, note, or file to get started.</p>
+          <div className="text-center py-16 px-6 bg-card rounded-lg border-2 border-dashed border-border">
+            <h3 className="text-xl font-semibold text-foreground">This bundle is empty</h3>
+            <p className="mt-2 text-muted-foreground">Add a link, note, or file to get started.</p>
           </div>
         )}
       </div>
+      
+      <Modal isOpen={!!itemToDelete} onClose={() => setItemToDelete(null)} title="Delete Item" footer={
+        <>
+          <button onClick={() => setItemToDelete(null)} className="px-4 py-2 font-medium bg-muted text-foreground rounded-md hover:bg-accent">
+            Cancel
+          </button>
+          <button onClick={handleDeleteConfirm} className="px-4 py-2 font-medium text-destructive-foreground bg-destructive rounded-md hover:bg-destructive/90">
+            Delete Item
+          </button>
+        </>
+      }>
+        <p>Are you sure you want to delete the item "{itemToDelete?.title}"? This action cannot be undone.</p>
+      </Modal>
     </div>
   );
 };

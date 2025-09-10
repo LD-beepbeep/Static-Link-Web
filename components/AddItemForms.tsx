@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useBundles } from '../hooks/useBundles';
 import { IconFile, IconLink, IconNote, IconPlus } from './icons';
@@ -9,6 +8,16 @@ import type { FileItem, LinkItem, NoteItem } from '../types';
 interface AddItemFormsProps {
   bundleId: string;
 }
+
+const AddButton: React.FC<{ icon: React.ReactNode; label: string; onClick: () => void }> = ({ icon, label, onClick }) => (
+  <button
+    onClick={onClick}
+    className="flex flex-col items-center justify-center p-6 bg-card border border-border rounded-lg hover:bg-accent hover:border-primary/50 transition-colors shadow-sm"
+  >
+    {icon}
+    <span className="font-semibold mt-2 text-sm text-foreground">{label}</span>
+  </button>
+);
 
 export const AddItemForms: React.FC<AddItemFormsProps> = ({ bundleId }) => {
   const [activeForm, setActiveForm] = useState<ItemType | null>(null);
@@ -26,7 +35,7 @@ export const AddItemForms: React.FC<AddItemFormsProps> = ({ bundleId }) => {
     setActiveForm(null);
   };
 
-  const handleAddNote = async (text: string, title: string) => {
+  const handleAddNote = async (text: string, title:string) => {
     const newItem: NoteItem = {
       id: crypto.randomUUID(),
       type: ItemType.NOTE,
@@ -71,23 +80,14 @@ export const AddItemForms: React.FC<AddItemFormsProps> = ({ bundleId }) => {
   };
 
   return (
-    <div className="my-4 p-4 bg-slate-100 dark:bg-slate-800 rounded-lg">
+    <div className="my-6">
       {activeForm ? (
-        renderForm()
+        <div className="p-4 bg-card border border-border rounded-lg">{renderForm()}</div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <button onClick={() => setActiveForm(ItemType.LINK)} className="flex flex-col items-center justify-center p-6 bg-white dark:bg-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors shadow">
-            <IconLink size={32} className="text-brand-primary mb-2" />
-            <span className="font-semibold">Add Link</span>
-          </button>
-          <button onClick={() => setActiveForm(ItemType.NOTE)} className="flex flex-col items-center justify-center p-6 bg-white dark:bg-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors shadow">
-            <IconNote size={32} className="text-brand-secondary mb-2" />
-            <span className="font-semibold">Add Note</span>
-          </button>
-          <button onClick={() => setActiveForm(ItemType.FILE)} className="flex flex-col items-center justify-center p-6 bg-white dark:bg-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors shadow">
-            <IconFile size={32} className="text-orange-500 mb-2" />
-            <span className="font-semibold">Add File</span>
-          </button>
+          <AddButton icon={<IconLink size={32} className="text-primary" />} label="Add Link" onClick={() => setActiveForm(ItemType.LINK)} />
+          <AddButton icon={<IconNote size={32} className="text-secondary" />} label="Add Note" onClick={() => setActiveForm(ItemType.NOTE)} />
+          <AddButton icon={<IconFile size={32} className="text-orange-500" />} label="Add File" onClick={() => setActiveForm(ItemType.FILE)} />
         </div>
       )}
     </div>
@@ -106,18 +106,18 @@ const AddLinkForm: React.FC<{ onSubmit: (url: string, title: string) => void, on
 
     return (
         <form onSubmit={handleSubmit} className="space-y-4">
-            <h3 className="text-lg font-medium text-center">Add a New Link</h3>
+            <h3 className="text-lg font-medium text-center text-foreground">Add a New Link</h3>
             <div>
-                <label htmlFor="link-url" className="block text-sm font-medium text-slate-700 dark:text-slate-300">URL</label>
-                <input type="url" id="link-url" value={url} onChange={e => setUrl(e.target.value)} required className="mt-1 block w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-md shadow-sm focus:outline-none focus:ring-brand-primary focus:border-brand-primary" placeholder="https://example.com" />
+                <label htmlFor="link-url" className="block text-sm font-medium text-muted-foreground">URL</label>
+                <input type="url" id="link-url" value={url} onChange={e => setUrl(e.target.value)} required className="mt-1 block w-full px-3 py-2 bg-transparent border border-input rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-ring" placeholder="https://example.com" />
             </div>
             <div>
-                <label htmlFor="link-title" className="block text-sm font-medium text-slate-700 dark:text-slate-300">Title (Optional)</label>
-                <input type="text" id="link-title" value={title} onChange={e => setTitle(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-md shadow-sm focus:outline-none focus:ring-brand-primary focus:border-brand-primary" placeholder="My Awesome Link" />
+                <label htmlFor="link-title" className="block text-sm font-medium text-muted-foreground">Title (Optional)</label>
+                <input type="text" id="link-title" value={title} onChange={e => setTitle(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-transparent border border-input rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-ring" placeholder="My Awesome Link" />
             </div>
             <div className="flex justify-end gap-2">
-                <button type="button" onClick={onCancel} className="px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 bg-slate-200 dark:bg-slate-600 rounded-md hover:bg-slate-300 dark:hover:bg-slate-500">Cancel</button>
-                <button type="submit" className="px-4 py-2 text-sm font-medium text-white bg-brand-primary rounded-md hover:bg-indigo-700 flex items-center gap-1"><IconPlus size={16}/> Add Link</button>
+                <button type="button" onClick={onCancel} className="px-4 py-2 text-sm font-medium text-foreground bg-muted rounded-md hover:bg-accent">Cancel</button>
+                <button type="submit" className="px-4 py-2 text-sm font-medium text-primary-foreground bg-primary rounded-md hover:bg-primary/90 flex items-center gap-1"><IconPlus size={16}/> Add Link</button>
             </div>
         </form>
     );
@@ -134,18 +134,18 @@ const AddNoteForm: React.FC<{ onSubmit: (text: string, title: string) => void, o
 
     return (
         <form onSubmit={handleSubmit} className="space-y-4">
-            <h3 className="text-lg font-medium text-center">Add a New Note</h3>
+            <h3 className="text-lg font-medium text-center text-foreground">Add a New Note</h3>
              <div>
-                <label htmlFor="note-title" className="block text-sm font-medium text-slate-700 dark:text-slate-300">Title (Optional)</label>
-                <input type="text" id="note-title" value={title} onChange={e => setTitle(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-md shadow-sm focus:outline-none focus:ring-brand-primary focus:border-brand-primary" placeholder="My Important Note" />
+                <label htmlFor="note-title" className="block text-sm font-medium text-muted-foreground">Title (Optional)</label>
+                <input type="text" id="note-title" value={title} onChange={e => setTitle(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-transparent border border-input rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-ring" placeholder="My Important Note" />
             </div>
             <div>
-                <label htmlFor="note-text" className="block text-sm font-medium text-slate-700 dark:text-slate-300">Content</label>
-                <textarea id="note-text" value={text} onChange={e => setText(e.target.value)} required rows={4} className="mt-1 block w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-md shadow-sm focus:outline-none focus:ring-brand-primary focus:border-brand-primary" placeholder="Type your note here..."></textarea>
+                <label htmlFor="note-text" className="block text-sm font-medium text-muted-foreground">Content</label>
+                <textarea id="note-text" value={text} onChange={e => setText(e.target.value)} required rows={4} className="mt-1 block w-full px-3 py-2 bg-transparent border border-input rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-ring" placeholder="Type your note here..."></textarea>
             </div>
             <div className="flex justify-end gap-2">
-                <button type="button" onClick={onCancel} className="px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 bg-slate-200 dark:bg-slate-600 rounded-md hover:bg-slate-300 dark:hover:bg-slate-500">Cancel</button>
-                <button type="submit" className="px-4 py-2 text-sm font-medium text-white bg-brand-primary rounded-md hover:bg-indigo-700 flex items-center gap-1"><IconPlus size={16}/> Add Note</button>
+                <button type="button" onClick={onCancel} className="px-4 py-2 text-sm font-medium text-foreground bg-muted rounded-md hover:bg-accent">Cancel</button>
+                <button type="submit" className="px-4 py-2 text-sm font-medium text-primary-foreground bg-primary rounded-md hover:bg-primary/90 flex items-center gap-1"><IconPlus size={16}/> Add Note</button>
             </div>
         </form>
     );
@@ -167,15 +167,15 @@ const AddFileForm: React.FC<{ onSubmit: (file: File) => void, onCancel: () => vo
 
     return (
         <form onSubmit={handleSubmit} className="space-y-4">
-            <h3 className="text-lg font-medium text-center">Add a New File</h3>
+            <h3 className="text-lg font-medium text-center text-foreground">Add a New File</h3>
             <div>
-                <label htmlFor="file-input" className="block text-sm font-medium text-slate-700 dark:text-slate-300">Select File</label>
-                <input type="file" id="file-input" onChange={handleFileChange} required className="mt-1 block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 dark:file:bg-indigo-900 file:text-brand-primary dark:file:text-indigo-300 hover:file:bg-indigo-100 dark:hover:file:bg-indigo-800" />
+                <label htmlFor="file-input" className="block text-sm font-medium text-muted-foreground">Select File</label>
+                <input type="file" id="file-input" onChange={handleFileChange} required className="mt-1 block w-full text-sm text-muted-foreground file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20" />
             </div>
-            {file && <p className="text-sm text-slate-500 dark:text-slate-400">Selected: {file.name} ({(file.size / 1024).toFixed(2)} KB)</p>}
+            {file && <p className="text-sm text-muted-foreground">Selected: {file.name} ({(file.size / 1024).toFixed(2)} KB)</p>}
             <div className="flex justify-end gap-2">
-                <button type="button" onClick={onCancel} className="px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 bg-slate-200 dark:bg-slate-600 rounded-md hover:bg-slate-300 dark:hover:bg-slate-500">Cancel</button>
-                <button type="submit" className="px-4 py-2 text-sm font-medium text-white bg-brand-primary rounded-md hover:bg-indigo-700 flex items-center gap-1"><IconPlus size={16}/> Add File</button>
+                <button type="button" onClick={onCancel} className="px-4 py-2 text-sm font-medium text-foreground bg-muted rounded-md hover:bg-accent">Cancel</button>
+                <button type="submit" className="px-4 py-2 text-sm font-medium text-primary-foreground bg-primary rounded-md hover:bg-primary/90 flex items-center gap-1"><IconPlus size={16}/> Add File</button>
             </div>
         </form>
     );

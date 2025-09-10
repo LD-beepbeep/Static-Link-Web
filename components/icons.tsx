@@ -1,4 +1,3 @@
-
 import {
   File as FileIcon,
   Link as LinkIcon,
@@ -17,7 +16,11 @@ import {
   MoreVertical,
   ChevronUp,
   ChevronDown,
-  Share2
+  Share2,
+  Sun,
+  Moon,
+  Monitor,
+  Search,
 } from 'lucide-react';
 import type { LucideProps } from 'lucide-react';
 import React from 'react';
@@ -39,5 +42,8 @@ export const IconEdit = (props: LucideProps) => <Edit {...props} />;
 export const IconMoreVertical = (props: LucideProps) => <MoreVertical {...props} />;
 export const IconChevronUp = (props: LucideProps) => <ChevronUp {...props} />;
 export const IconChevronDown = (props: LucideProps) => <ChevronDown {...props} />;
-// FIX: Add missing IconShare2 to fix import error in BundleEditorScreen.
 export const IconShare2 = (props: LucideProps) => <Share2 {...props} />;
+export const IconSun = (props: LucideProps) => <Sun {...props} />;
+export const IconMoon = (props: LucideProps) => <Moon {...props} />;
+export const IconMonitor = (props: LucideProps) => <Monitor {...props} />;
+export const IconSearch = (props: LucideProps) => <Search {...props} />
