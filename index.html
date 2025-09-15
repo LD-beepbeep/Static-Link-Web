@@ -9,6 +9,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="manifest" href="/manifest.json">
+    <meta name="description" content="Bundle links, notes, and files for instant sharing with QR codes or files. Free, open source, no cloud required.">
     <meta name="theme-color" content="#2D3748">
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -129,5 +130,12 @@
   <body class="bg-background text-foreground antialiased font-sans">
     <div id="root"></div>
     <script type="module" src="/index.tsx"></script>
+    <script>
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", function() {
+        navigator.serviceWorker.register("/service-worker.js");
+      });
+    }
+  </script>
   </body>
 </html>
