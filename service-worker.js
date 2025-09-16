@@ -4,6 +4,7 @@ const urlsToCache = [
   "/index.html",
   "/manifest.json",
   // Add your static assets here, e.g. CSS/JS files
+  // Yes
 ];
 
 self.addEventListener("install", event => {
