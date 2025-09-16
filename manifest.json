@@ -2,8 +2,8 @@
   "name": "StaticLink",
   "short_name": "StaticLink",
   "description": "Bundle links, notes, and files for instant sharing with QR codes or files. Free, open source, no cloud required.",
-  "start_url": "/",
-  "scope": "/",
+  "start_url": ".",
+  "scope": "."
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#2D3748",
