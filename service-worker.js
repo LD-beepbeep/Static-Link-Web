@@ -3,8 +3,10 @@ const urlsToCache = [
   "/",
   "/index.html",
   "/manifest.json",
-  // Add your static assets here, e.g. CSS/JS files
-  // Yes
+  "/icons/icon-192.png",
+  "/icons/icon-512.png",
+  "/vite.svg",
+  "/index.tsx"
 ];
 
 self.addEventListener("install", event => {
