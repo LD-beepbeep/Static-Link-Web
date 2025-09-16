@@ -1,6 +1,6 @@
 {
-  "name": "StaticLink",
-  "short_name": "StaticLink",
+  "name": "Static Link",
+  "short_name": "Static Link",
   "description": "Bundle links, notes, and files for instant sharing with QR codes or files. Free, open source, no cloud required.",
   "start_url": "/Static-Link-Web/",
   "scope": "/Static-Link-Web/",
