@@ -1,6 +1,6 @@
 🚀 StaticLink
 
-Bundle links, notes & files — share instantly with no fuss, no cloud, no accounts. Offline-first, privacy-focused, and open source.
+Bundle links, notes & files — share instantly with no fuss, no cloud, no accounts. Privacy-focused, and open source.
 
 
 ---
@@ -11,7 +11,7 @@ Bundle links, notes & files — share instantly with no fuss, no cloud, no accou
 
 📶 Share instantly via QR code or small file
 
-🔒 Fully offline, no logins, no ads
+🔒 Free forever, no logins, no ads
 
 🎨 Simple, clean, and beautiful UI
 
