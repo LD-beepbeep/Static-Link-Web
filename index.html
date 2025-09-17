@@ -143,28 +143,38 @@
   <body class="bg-background text-foreground antialiased font-sans">
   <div id="root"></div>
 
-  <!-- Install button (hidden by default) -->
+  <!-- New responsive install button -->
   <button id="installBtn"
-          class="fixed bottom-4 right-4 bg-primary text-white px-4 py-2 rounded-lg shadow-lg hidden">
-    Install App
+    class="
+      fixed bottom-4 right-4 bg-primary text-white shadow-lg
+      rounded-full md:rounded-lg
+      p-3 md:px-4 md:py-2
+      flex items-center justify-center
+      hidden">
+    <span class="hidden md:inline">Install App</span>
+    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 ml-0 md:ml-2" fill="none"
+         viewBox="0 0 24 24" stroke="currentColor">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5m0 0l5-5m-5 5V4"/>
+    </svg>
   </button>
 
-  <!-- Install prompt script -->
   <script>
     let deferredPrompt;
 
     window.addEventListener('beforeinstallprompt', (e) => {
       e.preventDefault();
       deferredPrompt = e;
-      // show your button
       document.getElementById('installBtn').classList.remove('hidden');
     });
 
     document.getElementById('installBtn').addEventListener('click', async () => {
-      document.getElementById('installBtn').classList.add('hidden');
       if (deferredPrompt) {
         deferredPrompt.prompt();
-        await deferredPrompt.userChoice;
+        const choice = await deferredPrompt.userChoice;
+        if (choice.outcome === 'accepted') {
+          document.getElementById('installBtn').classList.add('hidden');
+        }
         deferredPrompt = null;
       }
     });
