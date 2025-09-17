@@ -19,6 +19,23 @@
       "type": "image/png"
     }
   ],
+  "screenshots": [
+    {
+      "src": "screenshots/screen1.png",
+      "sizes": "458x929",
+      "type": "image/png"
+    },
+    {
+      "src": "screenshots/screen2.png",
+      "sizes": "458x929",
+      "type": "image/png"
+    },
+    {
+      "src": "screenshots/screen3.png",
+      "sizes": "458x929",
+      "type": "image/png"
+    }
+  ]
   "share_target": {
     "action": "/share-target",
     "method": "POST",
