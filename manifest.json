@@ -34,8 +34,8 @@
       "src": "screenshots/screen3.png",
       "sizes": "458x929",
       "type": "image/png"
-    },
-  ]
+    }
+  ],
   "share_target": {
     "action": "/share-target",
     "method": "POST",
