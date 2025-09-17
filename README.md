@@ -1,4 +1,4 @@
-🚀 StaticLink
+# Static Link Web 🚀
 
 Bundle links, notes & files — share instantly with no fuss, no cloud, no accounts. Privacy-focused, and open source.
 
@@ -32,11 +32,10 @@ Let’s keep it simple, powerful, and fun.
 MIT License — see the LICENSE file for details.
 
 ---
+
 # Static Link Desktop
 
 Built using [Nativefier](https://github.com/nativefier/nativefier).
-
-![App Icon](icon.ico)
 
 ---
 
