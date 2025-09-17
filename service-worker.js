@@ -3,6 +3,7 @@ const urlsToCache = [
   "/",
   "/index.html",
   "/manifest.json",
+  "/offline.html",
   "/icons/icon-192.png",
   "/icons/icon-512.png",
   "/vite.svg",
@@ -15,10 +16,11 @@ self.addEventListener("install", event => {
   );
 });
 
+// Offline-first
 self.addEventListener("fetch", event => {
   event.respondWith(
     caches.match(event.request)
-      .then(response => response || fetch(event.request))
+      .then(response => response || fetch(event.request).catch(() => caches.match('/offline.html')))
   );
 });
 
@@ -28,4 +30,10 @@ self.addEventListener("activate", event => {
       Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
     )
   );
+});
+
+// Notification click handler
+self.addEventListener('notificationclick', event => {
+  event.notification.close();
+  event.waitUntil(clients.openWindow('/'));
 });
