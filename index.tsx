@@ -14,3 +14,26 @@ root.render(
     <App />
   </React.StrictMode>
 );
+
+// ✅ Add this BELOW your render code — it won’t break your app.
+if ('serviceWorker' in navigator) {
+  // register your service worker
+  navigator.serviceWorker.register('/service-worker.js').then(() => {
+    console.log('Service Worker registered');
+
+    // ask for notification permission once the SW is ready
+    if ('Notification' in window) {
+      Notification.requestPermission().then(result => {
+        if (result === 'granted') {
+          navigator.serviceWorker.ready.then(registration => {
+            registration.showNotification('Welcome to StaticLink', {
+              body: 'Your app is now installed!',
+              icon: '/icons/icon-192.png'
+            });
+          });
+        }
+      });
+    }
+
+  }).catch(err => console.error('Service Worker registration failed', err));
+}
