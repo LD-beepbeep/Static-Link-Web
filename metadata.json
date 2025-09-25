@@ -1,0 +1,9 @@
+{
+  "name": "Static Link",
+  "description": "Throw links, notes, pics — anything — into a bundle.\nShare it instantly with a QR code.",
+  "requestFramePermissions": [
+    "microphone",
+    "geolocation",
+    "camera"
+  ]
+}
