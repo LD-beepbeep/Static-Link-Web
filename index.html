@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiM1YjY5ZWEiIHN0cm9rZS13aWR0aD0iMyIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNOSAxN0g3QTUgNSAwIDAgMSA3IDdoMiIvPjxwYXRoIGQ9Ik0xNSA3aDJhNSA1IDAgMSAxIDAgMTBoLTIiLz48bGluZSB4MT0iOCIgeDI9IjE2IiB5MT0iMTIiIHkyPSIxMiIvPjwvc3ZnPg==" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>StaticLink</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="manifest" href="/Static-Link-Web/assets/manifest-CFRsablW.json">
+    <link rel="icon" type="image/png" sizes="32x32" href="/Static-Link-Web/assets/icon-32-B-TNlH9H.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="/Static-Link-Web/assets/icon-512-mgDEDs5h.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/Static-Link-Web/assets/icon-192-DFofP51Q.png">
+    <meta name="theme-color" content="#2D3748">
+    <meta name="description" content="StaticLink lets you bundle links, notes, and files, then share them instantly with a QR code or small file. ">
+    <meta name="keywords" content="bundles, productivity, utilities">
+    <meta name="author" content="LD Studios">
+    <meta property="og:title" content="StaticLink">
+    <meta property="og:description" content="StaticLink lets you bundle links, notes, and files, then share them instantly with a QR code or small file. ">
+    <meta property="og:image" content="/Static-Link-Web/assets/icon-512-mgDEDs5h.png">
+    <meta property="og:url" content="https://ld-beepbeep.github.io/Static-Link-Web/">
+    <meta property="og:type" content="website">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="StaticLink with Spotify">
+    <meta name="twitter:description" content="Bundle links, notes, files, and embed Spotify playlists.">
+    <meta name="twitter:title" content="StaticLink">
+    <meta name="twitter:description" content="Bundle links, notes, files and more">
+    <meta name="twitter:image" content="/Static-Link-Web/assets/icon-512-mgDEDs5h.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="msapplication-TileColor" content="#2D3748">
+    <meta name="msapplication-TileImage" content="/Static-Link-Web/assets/icon-192-DFofP51Q.png">
+    <link rel="mask-icon" href="icons/icon-512.svg" color="#2D3748">
+    <link rel="canonical" href="https://ld-beepbeep.github.io/Static-Link-Web/">
+    <meta name="robots" content="index,follow">
+    <meta name="color-scheme" content="light dark">
+    <link rel="apple-touch-startup-image" href="icons/splash-828x1792.png" media="(device-width:414px)">
+    <meta name="application-name" content="Static Link">
+    <meta name="apple-mobile-web-app-title" content="Static Link">
+    <link rel="alternate" hreflang="en" href="https://ld-beepbeep.github.io/Static-Link-Web/" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['Inter', 'sans-serif'],
+            },
+            colors: {
+              border: 'hsl(var(--border))',
+              input: 'hsl(var(--input))',
+              ring: 'hsl(var(--ring))',
+              background: 'hsl(var(--background))',
+              foreground: 'hsl(var(--foreground))',
+              primary: {
+                DEFAULT: 'hsl(var(--primary))',
+                foreground: 'hsl(var(--primary-foreground))',
+              },
+              secondary: {
+                DEFAULT: 'hsl(var(--secondary))',
+                foreground: 'hsl(var(--secondary-foreground))',
+              },
+              destructive: {
+                DEFAULT: 'hsl(var(--destructive))',
+                foreground: 'hsl(var(--destructive-foreground))',
+              },
+              muted: {
+                DEFAULT: 'hsl(var(--muted))',
+                foreground: 'hsl(var(--muted-foreground))',
+              },
+              accent: {
+                DEFAULT: 'hsl(var(--accent))',
+                foreground: 'hsl(var(--accent-foreground))',
+              },
+              popover: {
+                DEFAULT: 'hsl(var(--popover))',
+                foreground: 'hsl(var(--popover-foreground))',
+              },
+              card: {
+                DEFAULT: 'hsl(var(--card))',
+                foreground: 'hsl(var(--card-foreground))',
+              },
+            }
+          }
+        }
+      }
+    </script>
+    <style>
+      :root {
+        --background: 0 0% 100%;
+        --foreground: 222.2 84% 4.9%;
+        --card: 0 0% 100%;
+        --card-foreground: 222.2 84% 4.9%;
+        --popover: 0 0% 100%;
+        --popover-foreground: 222.2 84% 4.9%;
+        --primary: 243.8 90.5% 58.2%;
+        --primary-foreground: 210 40% 98%;
+        --secondary: 142.1 76.2% 36.3%;
+        --secondary-foreground: 210 40% 98%;
+        --muted: 210 40% 96.1%;
+        --muted-foreground: 215.4 16.3% 46.9%;
+        --accent: 210 40% 96.1%;
+        --accent-foreground: 222.2 47.4% 11.2%;
+        --destructive: 0 84.2% 60.2%;
+        --destructive-foreground: 210 40% 98%;
+        --border: 214.3 31.8% 91.4%;
+        --input: 214.3 31.8% 91.4%;
+        --ring: 243.8 90.5% 58.2%;
+        
+        /* HighlightJS Light Theme Vars */
+        --hljs-bg: #fefefe;
+        --hljs-text: #545454;
+        --hljs-comment: #696969;
+        --hljs-keyword: #0077aa;
+        --hljs-string: #0077aa;
+        --hljs-number: #0077aa;
+        --hljs-class-title: #0077aa;
+        --hljs-function-title: #333;
+        --hljs-variable: #333;
+        --hljs-tag-name: #0077aa;
+        --hljs-attr-name: #0077aa;
+        --hljs-attr-value: #333;
+        --hljs-emphasis-color: #333;
+      }
+      .dark {
+        --background: 222.2 84% 4.9%;
+        --foreground: 210 40% 98%;
+        --card: 222.2 84% 4.9%;
+        --card-foreground: 210 40% 98%;
+        --popover: 222.2 84% 4.9%;
+        --popover-foreground: 210 40% 98%;
+        --primary: 243.8 90.5% 58.2%;
+        --primary-foreground: 210 40% 98%;
+        --secondary: 142.1 76.2% 36.3%;
+        --secondary-foreground: 210 40% 98%;
+        --muted: 217.2 32.6% 17.5%;
+        --muted-foreground: 215 20.2% 65.1%;
+        --accent: 217.2 32.6% 17.5%;
+        --accent-foreground: 210 40% 98%;
+        --destructive: 0 62.8% 30.6%;
+        --destructive-foreground: 210 40% 98%;
+        --border: 217.2 32.6% 17.5%;
+        --input: 217.2 32.6% 17.5%;
+        --ring: 243.8 90.5% 58.2%;
+        
+        /* HighlightJS Dark Theme Vars */
+        --hljs-bg: #282c34;
+        --hljs-text: #abb2bf;
+        --hljs-comment: #5c6370;
+        --hljs-keyword: #c678dd;
+        --hljs-string: #98c379;
+        --hljs-number: #d19a66;
+        --hljs-class-title: #e6c07b;
+        --hljs-function-title: #61afef;
+        --hljs-variable: #e06c75;
+        --hljs-tag-name: #e06c75;
+        --hljs-attr-name: #d19a66;
+        --hljs-attr-value: #98c379;
+        --hljs-emphasis-color: #abb2bf;
+      }
+
+      /* HighlightJS Base Styles */
+      pre code.hljs { display: block; overflow-x: auto; padding: 1em; background: var(--hljs-bg); border-radius: 6px; }
+      .hljs { color: var(--hljs-text); }
+      .hljs-comment, .hljs-quote { color: var(--hljs-comment); font-style: italic; }
+      .hljs-doctag, .hljs-formula, .hljs-keyword { color: var(--hljs-keyword); }
+      .hljs-attr, .hljs-attribute, .hljs-literal, .hljs-meta .hljs-string, .hljs-number, .hljs-operator, .hljs-regexp, .hljs-string, .hljs-template-tag, .hljs-template-variable, .hljs-type, .hljs-variable.language_ { color: var(--hljs-string); }
+      .hljs-built_in, .hljs-title.class_, .hljs-class .hljs-title { color: var(--hljs-class-title); }
+      .hljs-title.function_ { color: var(--hljs-function-title); }
+      .hljs-variable { color: var(--hljs-variable); }
+      .hljs-tag, .hljs-name { color: var(--hljs-tag-name); }
+      .hljs-attribute { color: var(--hljs-attr-name); }
+      .hljs-string { color: var(--hljs-attr-value); }
+      .hljs-emphasis { color: var(--hljs-emphasis-color); font-style: italic; }
+      .hljs-strong { color: var(--hljs-emphasis-color); font-weight: 700; }
+
+      /* Toast Notifications */
+      .toast-container {
+        position: fixed;
+        bottom: 2rem;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 100;
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        align-items: center;
+      }
+      .toast {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        background-color: hsl(var(--foreground));
+        color: hsl(var(--background));
+        padding: 0.75rem 1.25rem;
+        border-radius: 9999px;
+        box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        animation: toast-in 0.5s cubic-bezier(0.21, 1.02, 0.73, 1);
+      }
+      @keyframes toast-in {
+        from {
+          transform: translateY(100%) scale(0.9);
+          opacity: 0;
+        }
+        to {
+          transform: translateY(0) scale(1);
+          opacity: 1;
+        }
+      }
+
+      /* Screen Transitions */
+      .screen-container {
+        position: relative;
+        width: 100%;
+      }
+      .screen {
+        animation: fadeIn 0.3s ease-in-out;
+      }
+      @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+      }
+
+      /* Mobile Dock */
+      .mobile-dock {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        z-index: 40;
+        background-color: hsl(var(--card) / 0.8);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border-top: 1px solid hsl(var(--border) / 0.8);
+        display: flex;
+        justify-content: space-around;
+        align-items: center;
+        height: calc(4.5rem + env(safe-area-inset-bottom));
+        padding-bottom: env(safe-area-inset-bottom);
+      }
+      
+      /* Mobile Bottom Sheet */
+      .bottom-sheet-overlay {
+        position: fixed;
+        inset: 0;
+        background-color: rgb(0 0 0 / 0.5);
+        z-index: 50;
+        animation: fadeIn 0.3s ease-in-out;
+      }
+      .bottom-sheet {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background-color: hsl(var(--card));
+        border-top-left-radius: 1rem;
+        border-top-right-radius: 1rem;
+        border-top: 1px solid hsl(var(--border));
+        max-height: 80vh;
+        overflow-y: auto;
+        animation: slide-up 0.3s cubic-bezier(0.21, 1.02, 0.73, 1);
+      }
+      @keyframes slide-up {
+        from {
+          transform: translateY(100%);
+        }
+        to {
+          transform: translateY(0);
+        }
+      }
+      
+      /* Search Highlighting */
+      mark {
+        background-color: #fef08a; /* yellow-200 */
+        color: #713f12; /* yellow-900 */
+        padding: 2px 1px;
+        border-radius: 3px;
+      }
+      .dark mark {
+          background-color: #facc15; /* yellow-400 */
+          color: #422006; /* yellow-950 */
+      }
+
+    </style>
+    <script>
+      // Prevents flash of incorrect theme on page load
+      if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        document.documentElement.classList.add('dark')
+      } else {
+        document.documentElement.classList.remove('dark')
+      }
+    </script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <script type="importmap">
+{
+  "imports": {
+    "react/": "https://aistudiocdn.com/react@^19.1.1/",
+    "react": "https://aistudiocdn.com/react@^19.1.1",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.1.1/",
+    "dexie": "https://aistudiocdn.com/dexie@^4.2.0",
+    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.543.0",
+    "jszip": "https://aistudiocdn.com/jszip@^3.10.1",
+    "qrcode.react": "https://aistudiocdn.com/qrcode.react@^4.2.0",
+    "file-saver": "https://aistudiocdn.com/file-saver@^2.0.5",
+    "dexie-react-hooks": "https://aistudiocdn.com/dexie-react-hooks@^4.2.0",
+    "showdown": "https://aistudiocdn.com/showdown@^2.1.0",
+    "html5-qrcode": "https://aistudiocdn.com/html5-qrcode@^2.3.8"
+  }
+}
+</script>
+  <script type="module" crossorigin src="/Static-Link-Web/assets/index-BuyBE402.js"></script>
+</head>
+  <body class="bg-background text-foreground antialiased font-sans">
+    <div id="root"></div>
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function () {
+          navigator.serviceWorker.register('service-worker.js');
+        });
+      }
+    </script>
+    <button id="installBtn"
+      class="fixed bottom-4 right-4 bg-primary text-white shadow-lg rounded-full md:rounded-lg p-3 md:px-4 md:py-2 flex items-center justify-center hidden opacity-100 transition-all duration-300">
+      <span class="hidden md:inline">Install App</span>
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 ml-0 md:ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5m0 0l5-5m-5 5V4"/>
+      </svg>
+    </button>
+    <script>
+      let deferredPrompt;
+      let scrollTimeout;
+      const btn = document.getElementById('installBtn');
+      window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredPrompt = e;
+        btn.classList.remove('hidden');
+      });
+      btn.addEventListener('click', async () => {
+        if (deferredPrompt) {
+          deferredPrompt.prompt();
+          const choice = await deferredPrompt.userChoice;
+          if (choice.outcome === 'accepted') {
+            btn.classList.add('hidden');
+          }
+          deferredPrompt = null;
+        }
+      });
+      window.addEventListener('scroll', () => {
+        if (window.innerWidth < 768) {
+          btn.classList.add('p-2');
+          btn.classList.remove('md:px-4', 'md:py-2');
+        }
+        btn.classList.add('opacity-30');
+        clearTimeout(scrollTimeout);
+        scrollTimeout = setTimeout(() => {
+          if (window.innerWidth < 768) {
+            btn.classList.remove('p-2');
+            btn.classList.add('p-3');
+          }
+          btn.classList.remove('opacity-30');
+        }, 300);
+      });
+    </script>
+  </body>
+</html>
