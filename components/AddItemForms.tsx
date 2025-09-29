@@ -1,10 +1,11 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useBundles } from '../hooks/useBundles';
-import { IconFile, IconLink, IconNote, IconPlus, IconMic, IconListChecks, IconContact, IconMapPin, IconPenSquare, IconMail, IconCode, IconTarget, IconX, IconArrowLeft, IconQrCode } from './icons';
+import { IconFile, IconLink, IconNote, IconPlus, IconMic, IconListChecks, IconContact, IconMapPin, IconPenSquare, IconMail, IconCode, IconTarget, IconX, IconArrowLeft, IconQrCode, IconBold, IconItalic, IconCodeInline, IconQuote, IconList } from './icons';
 import { calculateChecksum, fileToBase64 } from '../services/bundleService';
 import { ItemType } from '../types';
 import type { FileItem, LinkItem, NoteItem, AudioItem, ChecklistItem, ContactItem, LocationItem, DrawingItem, EmailItem, CodeSnippetItem, QrCodeItem } from '../types';
 import { useTheme } from '../contexts/ThemeContext';
+import { useToast } from '../App';
 // FIX: Import LucideProps for explicit typing of icon components.
 import type { LucideProps } from 'lucide-react';
 
@@ -41,6 +42,7 @@ export const AddItemForms: React.FC<AddItemFormsProps> = ({ bundleId, onFormSubm
   const [activeForm, setActiveForm] = useState<ItemType | null>(null);
   const { addItemToBundle, addItemsToBundle } = useBundles();
   const [isMobile, setIsMobile] = useState(window.innerWidth < 640);
+  const { showToast } = useToast();
 
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 640);
@@ -50,36 +52,46 @@ export const AddItemForms: React.FC<AddItemFormsProps> = ({ bundleId, onFormSubm
 
 
   const createItemAdder = <T extends any[]>(creator: (...args: T) => object | Promise<object>) => async (...args: T) => {
-    const itemData = await creator(...args);
-    const newItem = {
-      id: crypto.randomUUID(),
-      createdAt: new Date().toISOString(),
-      ...itemData,
-    };
-    await addItemToBundle(bundleId, newItem as any);
-    setActiveForm(null);
-    onFormSubmit();
+    try {
+        const itemData = await creator(...args);
+        const newItem = {
+          id: crypto.randomUUID(),
+          createdAt: new Date().toISOString(),
+          ...itemData,
+        };
+        await addItemToBundle(bundleId, newItem as any);
+        setActiveForm(null);
+        onFormSubmit();
+    } catch (error: any) {
+        showToast(error.message || "Failed to add item.", "error");
+        console.error(error);
+    }
   };
   
   const handleAddFiles = async (files: File[]) => {
-    const newItems: FileItem[] = await Promise.all(files.map(async (file) => {
-        const checksum = await calculateChecksum(file);
-        const content = await fileToBase64(file);
-        return {
-            id: crypto.randomUUID(),
-            createdAt: new Date().toISOString(),
-            type: ItemType.FILE,
-            title: file.name,
-            filename: file.name,
-            mimeType: file.type,
-            size: file.size,
-            content,
-            checksum
-        };
-    }));
-    await addItemsToBundle(bundleId, newItems as any);
-    setActiveForm(null);
-    onFormSubmit();
+    try {
+        const newItems: FileItem[] = await Promise.all(files.map(async (file) => {
+            const checksum = await calculateChecksum(file);
+            const content = await fileToBase64(file);
+            return {
+                id: crypto.randomUUID(),
+                createdAt: new Date().toISOString(),
+                type: ItemType.FILE,
+                title: file.name,
+                filename: file.name,
+                mimeType: file.type,
+                size: file.size,
+                content,
+                checksum
+            };
+        }));
+        await addItemsToBundle(bundleId, newItems as any);
+        setActiveForm(null);
+        onFormSubmit();
+    } catch (error: any) {
+        showToast(error.message || "Failed to add files.", "error");
+        console.error(error);
+    }
   };
 
   const handleAddLink = createItemAdder((url: string, title: string) => ({ type: ItemType.LINK, url, title: title || url }));
@@ -210,12 +222,89 @@ const AddLinkForm: React.FC<{ onSubmit: (url: string, title: string) => void, on
 const AddNoteForm: React.FC<{ onSubmit: (text: string, title: string) => void, onCancel: () => void }> = ({ onSubmit, onCancel }) => {
     const [text, setText] = useState('');
     const [title, setTitle] = useState('');
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
+    const [activeStyles, setActiveStyles] = useState<Set<string>>(new Set());
+
+    const checkActiveStyles = useCallback(() => {
+        const textarea = textareaRef.current;
+        if (!textarea) return;
+        const { selectionStart, value } = textarea;
+        const newStyles = new Set<string>();
+        
+        const check = (start: string, end: string, style: string) => {
+            let i = selectionStart - start.length;
+            while(i >= 0) {
+                if (value.substring(i, i + start.length) === start) {
+                    const closing = value.indexOf(end, i + start.length);
+                    if (closing !== -1 && closing >= selectionStart - start.length) {
+                        newStyles.add(style);
+                    }
+                    return;
+                }
+                if (value[i] === '\n') break;
+                i--;
+            }
+        };
+        
+        check('**', '**', 'bold');
+        check('*', '*', 'italic');
+        check('`', '`', 'code');
+
+        const lineStart = value.lastIndexOf('\n', selectionStart - 1) + 1;
+        if (value.substring(lineStart, lineStart + 2) === '> ') newStyles.add('quote');
+        if (value.substring(lineStart, lineStart + 2) === '- ') newStyles.add('list');
+
+        setActiveStyles(newStyles);
+    }, [textareaRef]);
+
     const handleSubmit = (e: React.FormEvent) => { e.preventDefault(); if (text) onSubmit(text, title); };
+
+    const applyStyle = (style: 'bold' | 'italic' | 'code' | 'quote' | 'list') => {
+        const textarea = textareaRef.current;
+        if (!textarea) return;
+        const { selectionStart, selectionEnd, value } = textarea;
+        const selectedText = value.substring(selectionStart, selectionEnd);
+        let newText;
+        switch(style) {
+            case 'bold': newText = `**${selectedText}**`; break;
+            case 'italic': newText = `*${selectedText}*`; break;
+            case 'code': newText = `\`${selectedText}\``; break;
+            case 'quote': newText = `> ${selectedText.replace(/\n/g, '\n> ')}`; break;
+            case 'list': newText = selectedText.split('\n').map(line => `- ${line}`).join('\n'); break;
+        }
+        setText(value.substring(0, selectionStart) + newText + value.substring(selectionEnd));
+        textarea.focus();
+        setTimeout(checkActiveStyles, 0);
+    };
+
     return (
         <form onSubmit={handleSubmit} className="space-y-4">
             <h3 className="text-lg font-medium text-center text-foreground">Add a New Note</h3>
             <FormInput label="Title (Optional)" id="note-title" type="text" value={title} onChange={e => setTitle(e.target.value)} placeholder="My Important Note" />
-            <FormTextarea label="Content" id="note-text" value={text} onChange={e => setText(e.target.value)} required rows={4} placeholder="Type your note here..."></FormTextarea>
+            <div>
+                 <label htmlFor="note-text" className="block text-sm font-medium text-muted-foreground">Content</label>
+                 <div className="mt-1 flex items-center gap-1 border border-input rounded-t-md p-1 bg-muted/50">
+                    <button type="button" onClick={() => applyStyle('bold')} title="Bold (Ctrl+B)" className={`p-2 rounded hover:bg-accent ${activeStyles.has('bold') ? 'bg-primary/20 text-primary' : ''}`}><IconBold size={16}/></button>
+                    <button type="button" onClick={() => applyStyle('italic')} title="Italic (Ctrl+I)" className={`p-2 rounded hover:bg-accent ${activeStyles.has('italic') ? 'bg-primary/20 text-primary' : ''}`}><IconItalic size={16}/></button>
+                    <button type="button" onClick={() => applyStyle('code')} title="Code" className={`p-2 rounded hover:bg-accent ${activeStyles.has('code') ? 'bg-primary/20 text-primary' : ''}`}><IconCodeInline size={16}/></button>
+                    <button type="button" onClick={() => applyStyle('quote')} title="Quote" className={`p-2 rounded hover:bg-accent ${activeStyles.has('quote') ? 'bg-primary/20 text-primary' : ''}`}><IconQuote size={16}/></button>
+                    <button type="button" onClick={() => applyStyle('list')} title="List" className={`p-2 rounded hover:bg-accent ${activeStyles.has('list') ? 'bg-primary/20 text-primary' : ''}`}><IconList size={16}/></button>
+                </div>
+                <textarea 
+                    ref={textareaRef} 
+                    id="note-text" 
+                    value={text} 
+                    onChange={e => setText(e.target.value)} 
+                    onSelect={checkActiveStyles}
+                    onKeyUp={checkActiveStyles}
+                    onFocus={checkActiveStyles}
+                    onClick={checkActiveStyles}
+                    required 
+                    rows={6} 
+                    placeholder="Type your note here... supports Markdown."
+                    className="w-full text-sm p-2 bg-transparent border border-t-0 border-input rounded-b-md focus:outline-none focus:ring-1 focus:ring-ring font-mono"
+                ></textarea>
+            </div>
             <FormButtons onCancel={onCancel} submitText="Add Note" />
         </form>
     );
