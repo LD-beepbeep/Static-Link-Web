@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useBundles } from '../hooks/useBundles';
 import { db } from '../db/db';
-import { IconPackage, IconPlus, IconTrash, IconEdit, IconUpload, IconMoreVertical, IconCopy, IconLink, IconNote, IconFile, IconShare2, IconSearch, IconMic, IconListChecks, IconContact, IconMapPin, IconPenSquare, IconMail, IconCode, IconImage, IconFileText, IconLock, IconQrCode, IconX, IconPin, IconPinOff, IconArchive, IconHistory, IconRecycle, IconHome, IconScan } from '../components/icons';
+import { IconPackage, IconPlus, IconTrash, IconEdit, IconUpload, IconMoreVertical, IconCopy, IconLink, IconNote, IconFile, IconShare2, IconSearch, IconMic, IconListChecks, IconContact, IconMapPin, IconPenSquare, IconMail, IconCode, IconImage, IconFileText, IconLock, IconQrCode, IconX, IconPin, IconPinOff, IconArchive, IconHistory, IconRecycle, IconHome, IconScan, IconArchiveRestore, IconClipboardCopy } from '../components/icons';
 import type { Bundle, LinkItem, BundleItem, FileItem } from '../types';
 import { ItemType } from '../types';
 import Modal from '../components/Modal';
@@ -18,6 +18,9 @@ interface HomeScreenProps {
   setShowRecycleBin: (show: boolean) => void;
   bookmarkletParams: URLSearchParams;
   onOpenScanner: () => void;
+  onNavigateToArchive: () => void;
+  onNavigateToHome: () => void;
+  onNavigateToRecycleBin: () => void;
 }
 
 const hashPassword = async (password: string): Promise<string> => {
@@ -114,14 +117,17 @@ const PasswordPromptModal: React.FC<{ bundle: Bundle; onClose: () => void; onUnl
     );
 };
 
-const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigateToEditor, onNavigateToShare, showArchived, setShowArchived, showRecycleBin, setShowRecycleBin, bookmarkletParams, onOpenScanner }) => {
-  const { bundles, addBundle, deleteBundle, deleteBundles, importBundle, duplicateBundle, updateBundle, mergeBundles, restoreBundle, permanentlyDeleteBundle, archiveBundles, addItemToBundle } = useBundles();
+const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigateToEditor, onNavigateToShare, showArchived, setShowArchived, showRecycleBin, setShowRecycleBin, bookmarkletParams, onOpenScanner, onNavigateToArchive, onNavigateHome, onNavigateToRecycleBin }) => {
+  const { bundles, addBundle, deleteBundle, deleteBundles, importBundle, duplicateBundle, updateBundle, mergeBundles, restoreBundle, permanentlyDeleteBundle, archiveBundles, unarchiveBundles, addItemToBundle, permanentlyDeleteBundles, restoreBundles } = useBundles();
   
-  // FIX: This query could crash the app for users on older DB versions without the `isDeleted` index.
-  // Changed to fetch all bundles and filter in memory for robustness, preventing crashes.
   const deletedBundles = useLiveQuery(async () => {
     const allBundles = await db.bundles.toArray();
     return allBundles.filter(bundle => bundle.isDeleted === true);
+  }, []);
+
+  const archivedBundles = useLiveQuery(async () => {
+    const allBundles = await db.bundles.toArray();
+    return allBundles.filter(bundle => bundle.isArchived === true && !bundle.isDeleted);
   }, []);
   
   const [bundleToDelete, setBundleToDelete] = useState<Bundle | null>(null);
@@ -138,19 +144,20 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigateToEditor, onNavigateT
   const [isSelectMode, setIsSelectMode] = useState(false);
   const [selectedBundleIds, setSelectedBundleIds] = useState<Set<string>>(new Set());
   const [isMergeModalOpen, setIsMergeModalOpen] = useState(false);
-  const [isActionMenuOpen, setIsActionMenuOpen] = useState(false);
+  
+  // Confirmation modals for bulk actions
   const [isBulkDeleteConfirmOpen, setIsBulkDeleteConfirmOpen] = useState(false);
-  const actionMenuRef = useRef<HTMLDivElement>(null);
+  const [isBulkPermanentDeleteConfirmOpen, setIsBulkPermanentDeleteConfirmOpen] = useState(false);
+  const [isDeleteAllFromBinConfirmOpen, setIsDeleteAllFromBinConfirmOpen] = useState(false);
+  const [isRestoreAllFromBinConfirmOpen, setIsRestoreAllFromBinConfirmOpen] = useState(false);
+  const [isMoveAllArchivedToBinConfirmOpen, setIsMoveAllArchivedToBinConfirmOpen] = useState(false);
+  const [isUnarchiveAllConfirmOpen, setIsUnarchiveAllConfirmOpen] = useState(false);
 
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-        if (actionMenuRef.current && !actionMenuRef.current.contains(event.target as Node)) {
-            setIsActionMenuOpen(false);
-        }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+    // Exit select mode when switching views
+    setIsSelectMode(false);
+    setSelectedBundleIds(new Set());
+  }, [showArchived, showRecycleBin]);
   
   useEffect(() => {
     const url = bookmarkletParams.get('url');
@@ -170,7 +177,6 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigateToEditor, onNavigateT
           createdAt: new Date().toISOString()
         };
         
-        // FIX: Replaced direct db.bundles.update with addItemToBundle hook to prevent circular reference errors.
         await addItemToBundle(targetBundle.id, newLink);
         showToast(`Link added to "${targetBundle.title}"`);
         onNavigateToEditor(targetBundle.id);
@@ -194,10 +200,13 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigateToEditor, onNavigateT
       setShowOnboarding(false);
   };
   
-  const handleOpenBundle = (bundle: Bundle) => {
-      if(isSelectMode) return handleToggleSelect(bundle.id);
-      if (bundle.isLocked) setBundleToUnlock(bundle);
-      else onNavigateToEditor(bundle.id);
+  const handleCardClick = (bundle: Bundle) => {
+      if (isSelectMode) {
+          handleToggleSelect(bundle.id);
+      } else {
+          if (bundle.isLocked) setBundleToUnlock(bundle);
+          else onNavigateToEditor(bundle.id);
+      }
   };
 
   const openDeleteConfirm = (bundle: Bundle) => setBundleToDelete(bundle);
@@ -206,10 +215,8 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigateToEditor, onNavigateT
     if (bundleToDelete) {
       if(showRecycleBin){
           permanentlyDeleteBundle(bundleToDelete.id);
-          showToast(`Permanently deleted "${bundleToDelete.title}"`);
       } else {
           deleteBundle(bundleToDelete.id);
-          showToast(`Moved "${bundleToDelete.title}" to Recycle Bin`);
       }
       setBundleToDelete(null);
     }
@@ -286,16 +293,12 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigateToEditor, onNavigateT
   };
 
   const handleArchiveSelected = async () => {
-      setIsActionMenuOpen(false);
       await archiveBundles(selectedBundleIds);
-      showToast(`Archived ${selectedBundleIds.size} bundles.`);
       handleToggleSelectMode();
   };
   
   const handleDeleteSelected = async () => {
-    setIsActionMenuOpen(false);
     await deleteBundles(selectedBundleIds);
-    showToast(`Moved ${selectedBundleIds.size} bundles to Recycle Bin.`);
     setIsBulkDeleteConfirmOpen(false);
     handleToggleSelectMode();
   };
@@ -303,27 +306,61 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigateToEditor, onNavigateT
   const handleUnarchive = async (bundleId: string) => updateBundle(bundleId, { isArchived: false });
   const handleRestore = async (bundleId: string) => restoreBundle(bundleId);
 
+  const handleBulkPermanentDelete = async () => {
+    const ids = Array.from(selectedBundleIds);
+    await permanentlyDeleteBundles(ids);
+    setIsBulkPermanentDeleteConfirmOpen(false);
+    handleToggleSelectMode();
+  }
+  
+  const handleBulkUnarchive = async () => {
+      await unarchiveBundles(selectedBundleIds);
+      handleToggleSelectMode();
+  }
+
+  const handleBulkRestore = async () => {
+    const ids = Array.from(selectedBundleIds);
+    await restoreBundles(ids);
+    handleToggleSelectMode();
+  }
+  
+  const handleDeleteAllFromBin = async () => {
+    const ids = (deletedBundles || []).map(b => b.id);
+    if (ids.length > 0) await permanentlyDeleteBundles(ids);
+    setIsDeleteAllFromBinConfirmOpen(false);
+  }
+  
+  const handleRestoreAllFromBin = async () => {
+      const ids = (deletedBundles || []).map(b => b.id);
+      if (ids.length > 0) await restoreBundles(ids);
+      setIsRestoreAllFromBinConfirmOpen(false);
+  }
+
+  const handleMoveAllArchivedToBin = async () => {
+    const ids = new Set((archivedBundles || []).map(b => b.id));
+    if (ids.size > 0) await deleteBundles(ids);
+    setIsMoveAllArchivedToBinConfirmOpen(false);
+  }
+  
+  const handleUnarchiveAll = async () => {
+      const ids = new Set((archivedBundles || []).map(b => b.id));
+      if (ids.size > 0) await unarchiveBundles(ids);
+      setIsUnarchiveAllConfirmOpen(false);
+  }
   
   const allBundles = useMemo(() => {
-    const currentList = showRecycleBin ? deletedBundles : bundles;
+    const baseList = bundles || [];
     const filterByQuery = (b: Bundle) => b.title.toLowerCase().includes(searchQuery.toLowerCase());
-    if (!currentList) return { pinned: [], active: [], archived: [], deleted: [], hasArchived: false, hasDeleted: false };
     
-    const pinned = currentList.filter(b => b.isPinned && !b.isArchived) || [];
-    const active = currentList.filter(b => !b.isPinned && !b.isArchived) || [];
-    const archived = currentList.filter(b => b.isArchived) || [];
-    const deleted = deletedBundles || [];
+    const pinned = baseList.filter(b => b.isPinned && !b.isArchived && !b.isDeleted).filter(filterByQuery);
+    const active = baseList.filter(b => !b.isPinned && !b.isArchived && !b.isDeleted).filter(filterByQuery);
+    const archived = (archivedBundles || []).filter(filterByQuery);
+    const deleted = (deletedBundles || []).filter(filterByQuery);
     
-    return {
-        pinned: pinned.filter(filterByQuery),
-        active: active.filter(filterByQuery),
-        archived: archived.filter(filterByQuery),
-        deleted: deleted.filter(filterByQuery),
-        hasArchived: (bundles || []).some(b => b.isArchived),
-        hasDeleted: deleted.length > 0
-    };
-  }, [bundles, deletedBundles, searchQuery, showRecycleBin]);
+    return { pinned, active, archived, deleted };
+  }, [bundles, archivedBundles, deletedBundles, searchQuery]);
 
+  const currentList = showRecycleBin ? allBundles.deleted : showArchived ? allBundles.archived : [...allBundles.pinned, ...allBundles.active];
 
   const BundleCard: React.FC<{ bundle: Bundle }> = ({ bundle }) => {
     const [menuOpen, setMenuOpen] = useState(false);
@@ -349,16 +386,13 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigateToEditor, onNavigateT
         }
     };
 
-    const isDeletedView = showRecycleBin;
-
     return (
         <div 
-          className={`bg-card border rounded-lg shadow-sm flex flex-col group transition-all duration-200
-            ${isSelectMode ? 'cursor-pointer' : ''}
-            ${!isDeletedView ? 'hover:shadow-md hover:border-primary/30' : ''}
+          className={`bg-card border rounded-lg shadow-sm flex flex-col group transition-all duration-200 cursor-pointer
+            ${!isSelectMode ? 'hover:shadow-md hover:border-primary/30' : ''}
             ${isSelected ? 'border-primary shadow-md ring-2 ring-primary' : 'border-border'}`
           }
-          onClick={() => !isDeletedView && handleOpenBundle(bundle)}
+          onClick={() => handleCardClick(bundle)}
         >
             <div className="p-5 flex-grow">
                 <div className="flex justify-between items-start">
@@ -368,49 +402,42 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigateToEditor, onNavigateT
                     </div>
                     {isSelectMode ? (
                       <input type="checkbox" checked={isSelected} readOnly className="h-5 w-5 rounded border-gray-300 text-primary focus:ring-primary"/>
-                    ) : (
-                      !isDeletedView && (
-                        <div className="relative" ref={menuRef}>
-                            <button onClick={toggleMenu} className="p-2 rounded-full text-muted-foreground hover:bg-accent"><IconMoreVertical size={20} /></button>
-                            {menuOpen && (
-                                <div className="absolute right-0 mt-2 w-48 bg-popover rounded-md shadow-lg z-10 border border-border">
-                                    <ul className="py-1">
-                                        <li><button onClick={e => handleAction(e, () => updateBundle(bundle.id, { isPinned: !bundle.isPinned }))} className="w-full text-left flex items-center gap-3 px-4 py-2 text-sm text-foreground hover:bg-accent">{bundle.isPinned ? <IconPinOff size={16}/> : <IconPin size={16}/>} {bundle.isPinned ? 'Unpin' : 'Pin'}</button></li>
-                                        <li><button onClick={e => handleAction(e, () => duplicateBundle(bundle.id))} className="w-full text-left flex items-center gap-3 px-4 py-2 text-sm text-foreground hover:bg-accent"><IconCopy size={16}/> Duplicate</button></li>
-                                        <li><button onClick={e => handleAction(e, () => updateBundle(bundle.id, { isArchived: true }))} className="w-full text-left flex items-center gap-3 px-4 py-2 text-sm text-foreground hover:bg-accent"><IconArchive size={16}/> Archive</button></li>
-                                        <li><button onClick={e => handleAction(e, () => openDeleteConfirm(bundle))} className="w-full text-left flex items-center gap-3 px-4 py-2 text-sm text-destructive dark:text-red-500 hover:bg-destructive/10"><IconTrash size={16}/> Delete</button></li>
-                                    </ul>
-                                </div>
-                            )}
-                        </div>
-                      )
+                    ) : (!showArchived && !showRecycleBin) && (
+                      <div className="relative" ref={menuRef}>
+                          <button onClick={toggleMenu} className="p-2 rounded-full text-muted-foreground hover:bg-accent"><IconMoreVertical size={20} /></button>
+                          {menuOpen && (
+                              <div className="absolute right-0 mt-2 w-48 bg-popover rounded-md shadow-lg z-10 border border-border">
+                                  <ul className="py-1">
+                                      <li><button onClick={e => handleAction(e, () => updateBundle(bundle.id, { isPinned: !bundle.isPinned }))} className="w-full text-left flex items-center gap-3 px-4 py-2 text-sm text-foreground hover:bg-accent">{bundle.isPinned ? <IconPinOff size={16}/> : <IconPin size={16}/>} {bundle.isPinned ? 'Unpin' : 'Pin'}</button></li>
+                                      <li><button onClick={e => handleAction(e, () => duplicateBundle(bundle.id))} className="w-full text-left flex items-center gap-3 px-4 py-2 text-sm text-foreground hover:bg-accent"><IconCopy size={16}/> Duplicate</button></li>
+                                      <li><button onClick={e => handleAction(e, () => { navigator.clipboard.writeText(bundle.title); showToast("Title copied!"); })} className="w-full text-left flex items-center gap-3 px-4 py-2 text-sm text-foreground hover:bg-accent"><IconClipboardCopy size={16}/> Copy Title</button></li>
+                                      <li><button onClick={e => handleAction(e, () => updateBundle(bundle.id, { isArchived: true }))} className="w-full text-left flex items-center gap-3 px-4 py-2 text-sm text-foreground hover:bg-accent"><IconArchive size={16}/> Archive</button></li>
+                                      <li><button onClick={e => handleAction(e, () => openDeleteConfirm(bundle))} className="w-full text-left flex items-center gap-3 px-4 py-2 text-sm text-destructive dark:text-red-500 hover:bg-destructive/10"><IconTrash size={16}/> Delete</button></li>
+                                  </ul>
+                              </div>
+                          )}
+                      </div>
                     )}
                 </div>
                 <p className="text-sm text-muted-foreground">{bundle.items.length} {bundle.items.length === 1 ? 'item' : 'items'}</p>
-                {isDeletedView && bundle.deletedAt && <p className="text-xs text-muted-foreground mt-1">Deleted: {new Date(bundle.deletedAt).toLocaleString()}</p>}
+                {showRecycleBin && bundle.deletedAt && <p className="text-xs text-muted-foreground mt-1">Deleted: {new Date(bundle.deletedAt).toLocaleString()}</p>}
                 <div className="flex items-center gap-1.5 mt-3 flex-wrap">
                     {bundle.items.slice(0, 7).map(item => getItemIcon(item))}
                     {bundle.items.length > 7 && <span className="text-xs text-muted-foreground">&hellip;</span>}
                 </div>
             </div>
-            {!bundle.isArchived && !isDeletedView && (
+            {!showRecycleBin && (
               <div className="bg-muted/50 p-3 rounded-b-lg flex justify-between items-center gap-2 border-t border-border">
-                  <p className="text-xs text-muted-foreground">Updated: {new Date(bundle.updatedAt).toLocaleDateString()}</p>
+                  <p className="text-xs text-muted-foreground" title={`Created: ${new Date(bundle.createdAt).toLocaleString()}`}>Updated: {new Date(bundle.updatedAt).toLocaleDateString()}</p>
                   <div className="flex items-center gap-2">
-                      {!isSelectMode && <button onClick={(e) => {e.stopPropagation(); onNavigateToShare(bundle.id);}} className="flex items-center justify-center h-9 w-9 text-sm font-semibold text-primary bg-primary/10 rounded-md hover:bg-primary/20 transition-colors" title="Share"><IconShare2 size={16} /></button>}
-                      <button className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-primary-foreground bg-primary rounded-md hover:bg-primary/90 shadow-sm transition-transform ${!isSelectMode && "group-hover:scale-105"}`}>
-                          <IconEdit size={14} /> Open
+                      {!isSelectMode && !showArchived && <button onClick={(e) => {e.stopPropagation(); onNavigateToShare(bundle.id);}} className="flex items-center justify-center h-9 w-9 text-sm font-semibold text-primary bg-primary/10 rounded-md hover:bg-primary/20 transition-colors" title="Share"><IconShare2 size={16} /></button>}
+                      <button onClick={(e) => {e.stopPropagation(); handleCardClick(bundle);}} className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold rounded-md ${showArchived ? 'bg-secondary text-secondary-foreground hover:bg-secondary/90' : 'text-primary-foreground bg-primary hover:bg-primary/90 shadow-sm'} transition-transform ${!isSelectMode && "group-hover:scale-105"}`}>
+                          {showArchived ? <IconArchiveRestore size={14}/> : <IconEdit size={14} />} {showArchived ? 'Unarchive' : 'Open'}
                       </button>
                   </div>
               </div>
             )}
-            {bundle.isArchived && (
-                 <div className="bg-muted/50 p-3 rounded-b-lg flex justify-end items-center gap-2 border-t border-border">
-                    <button onClick={(e) => { e.stopPropagation(); openDeleteConfirm(bundle); }} className="px-3 py-1.5 text-sm text-destructive hover:bg-destructive/10 rounded-md">Delete Permanently</button>
-                    <button onClick={(e) => { e.stopPropagation(); handleUnarchive(bundle.id); }} className="px-3 py-1.5 text-sm text-primary hover:bg-primary/10 rounded-md">Unarchive</button>
-                 </div>
-            )}
-             {isDeletedView && (
+             {showRecycleBin && (
                  <div className="bg-muted/50 p-3 rounded-b-lg flex justify-end items-center gap-2 border-t border-border">
                     <button onClick={(e) => { e.stopPropagation(); openDeleteConfirm(bundle); }} className="px-3 py-1.5 text-sm text-destructive hover:bg-destructive/10 rounded-md flex items-center gap-1.5"><IconTrash size={14}/> Delete Forever</button>
                     <button onClick={(e) => { e.stopPropagation(); handleRestore(bundle.id); }} className="px-3 py-1.5 text-sm text-primary hover:bg-primary/10 rounded-md flex items-center gap-1.5"><IconHistory size={14}/> Restore</button>
@@ -465,14 +492,27 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigateToEditor, onNavigateT
   
   const pageTitle = showRecycleBin ? "Recycle Bin" : showArchived ? "Archived Bundles" : "My Bundles";
   const pageDescription = showRecycleBin ? "Bundles here will be permanently deleted after 30 days." : showArchived ? "View and manage your archived bundles." : "Create, manage, and search your content.";
-  const currentBundles = showRecycleBin ? allBundles.deleted : showArchived ? allBundles.archived : [...allBundles.pinned, ...allBundles.active];
   
-  const MobileNavButton: React.FC<{ label: string, icon: React.ReactNode, isActive?: boolean, onClick: () => void }> = ({ label, icon, isActive = false, onClick }) => (
-    <button onClick={onClick} className={`flex-1 flex flex-col items-center justify-center h-full transition-colors ${isActive ? 'text-primary' : 'text-muted-foreground hover:text-primary'}`}>
+  const MobileNavButton: React.FC<{ label: string, icon: React.ReactNode, isActive?: boolean, onClick: () => void, disabled?: boolean }> = ({ label, icon, isActive = false, onClick, disabled = false }) => (
+    <button onClick={onClick} disabled={disabled} className={`flex-1 flex flex-col items-center justify-center h-full transition-colors ${isActive ? 'text-primary' : 'text-muted-foreground hover:text-primary'} disabled:text-muted-foreground/50 disabled:cursor-not-allowed`}>
       {icon}
       <span className="text-xs font-medium mt-1">{label}</span>
     </button>
   );
+
+  const MobileSelectAction: React.FC<{ label: string, icon: React.ReactNode, onClick: () => void, disabled?: boolean, isPrimary?: boolean }> = ({ label, icon, onClick, disabled=false, isPrimary=false }) => {
+    if (isPrimary) {
+      return (
+        <button onClick={onClick} disabled={disabled} className="flex-1 flex flex-col items-center justify-center h-full text-primary disabled:text-muted-foreground/50">
+          <div className="h-14 w-14 bg-primary text-primary-foreground rounded-full shadow-lg flex items-center justify-center ring-4 ring-background -mt-6">
+              {icon}
+          </div>
+          <span className="text-xs font-medium mt-1">{label}</span>
+        </button>
+      );
+    }
+    return <MobileNavButton label={label} icon={icon} onClick={onClick} disabled={disabled} />;
+  };
 
   return (
     <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 pb-24 sm:pb-8 relative" onDragEnter={handleDragEnter}>
@@ -485,42 +525,93 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigateToEditor, onNavigateT
        </Modal>
         
        <div className="sm:hidden mobile-dock">
-          <MobileNavButton label="Home" icon={<IconHome size={22}/>} isActive={!showArchived && !showRecycleBin} onClick={() => { setShowArchived(false); setShowRecycleBin(false); }} />
-          <MobileNavButton label="Scan" icon={<IconScan size={22}/>} onClick={onOpenScanner} />
-          <button onClick={() => setIsCreateModalOpen(true)} className="flex-1 flex flex-col items-center justify-center h-full text-primary">
-              <div className="h-14 w-14 bg-primary text-primary-foreground rounded-full shadow-lg flex items-center justify-center ring-4 ring-background -mt-6">
-                  <IconPlus size={28} />
-              </div>
-              <span className="text-xs font-medium mt-1">New</span>
-          </button>
-          <MobileNavButton label="Select" icon={<IconListChecks size={22}/>} isActive={isSelectMode} onClick={handleToggleSelectMode} />
-          <MobileNavButton label="Import" icon={<IconUpload size={22}/>} onClick={handleImportClick} />
+          {isSelectMode ? (
+            <>
+              <MobileNavButton label={`Cancel (${selectedBundleIds.size})`} icon={<IconX size={22}/>} onClick={handleToggleSelectMode} />
+              {showRecycleBin ? (
+                  <>
+                    <MobileSelectAction label="Restore" icon={<IconHistory size={28}/>} onClick={handleBulkRestore} disabled={selectedBundleIds.size === 0} isPrimary />
+                    <MobileSelectAction label="Delete" icon={<IconTrash size={22}/>} onClick={() => setIsBulkPermanentDeleteConfirmOpen(true)} disabled={selectedBundleIds.size === 0}/>
+                  </>
+              ) : showArchived ? (
+                  <>
+                    <MobileSelectAction label="Unarchive" icon={<IconArchiveRestore size={28}/>} onClick={handleBulkUnarchive} disabled={selectedBundleIds.size === 0} isPrimary />
+                    <MobileSelectAction label="Delete" icon={<IconTrash size={22}/>} onClick={() => setIsBulkDeleteConfirmOpen(true)} disabled={selectedBundleIds.size === 0}/>
+                  </>
+              ) : (
+                  <>
+                    <MobileNavButton label="Archive" icon={<IconArchive size={22}/>} onClick={handleArchiveSelected} disabled={selectedBundleIds.size === 0}/>
+                    <MobileSelectAction label="Merge" icon={<IconCopy size={28}/>} onClick={() => setIsMergeModalOpen(true)} disabled={selectedBundleIds.size < 2} isPrimary />
+                    <MobileNavButton label="Delete" icon={<IconTrash size={22}/>} onClick={() => setIsBulkDeleteConfirmOpen(true)} disabled={selectedBundleIds.size === 0}/>
+                  </>
+              )}
+            </>
+          ) : showRecycleBin ? (
+            <>
+              <MobileNavButton label="Home" icon={<IconHome size={22}/>} onClick={onNavigateHome} />
+              <MobileNavButton label="Restore All" icon={<IconHistory size={22}/>} onClick={() => setIsRestoreAllFromBinConfirmOpen(true)} disabled={!allBundles.deleted || allBundles.deleted.length === 0} />
+              <button onClick={() => setIsDeleteAllFromBinConfirmOpen(true)} disabled={!allBundles.deleted || allBundles.deleted.length === 0} className="flex-1 flex flex-col items-center justify-center h-full text-destructive disabled:text-muted-foreground/50">
+                  <div className="h-14 w-14 bg-destructive text-destructive-foreground rounded-full shadow-lg flex items-center justify-center ring-4 ring-background -mt-6">
+                      <IconTrash size={28} />
+                  </div>
+                  <span className="text-xs font-medium mt-1">Delete All</span>
+              </button>
+              <MobileNavButton label="Select" icon={<IconListChecks size={22}/>} onClick={handleToggleSelectMode} />
+            </>
+          ) : showArchived ? (
+            <>
+              <MobileNavButton label="Home" icon={<IconHome size={22}/>} onClick={onNavigateHome} />
+              <button onClick={handleToggleSelectMode} className="flex-1 flex flex-col items-center justify-center h-full text-primary">
+                  <div className="h-14 w-14 bg-primary text-primary-foreground rounded-full shadow-lg flex items-center justify-center ring-4 ring-background -mt-6">
+                      <IconListChecks size={28} />
+                  </div>
+                  <span className="text-xs font-medium mt-1">Select</span>
+              </button>
+              <MobileNavButton label="Bin All" icon={<IconTrash size={22}/>} onClick={() => setIsMoveAllArchivedToBinConfirmOpen(true)} disabled={!allBundles.archived || allBundles.archived.length === 0} />
+            </>
+          ) : (
+            <>
+              <MobileNavButton label="Home" icon={<IconHome size={22}/>} isActive={!showArchived && !showRecycleBin} onClick={onNavigateHome} />
+              <MobileNavButton label="Scan" icon={<IconScan size={22}/>} onClick={onOpenScanner} />
+              <button onClick={() => setIsCreateModalOpen(true)} className="flex-1 flex flex-col items-center justify-center h-full text-primary">
+                  <div className="h-14 w-14 bg-primary text-primary-foreground rounded-full shadow-lg flex items-center justify-center ring-4 ring-background -mt-6">
+                      <IconPlus size={28} />
+                  </div>
+                  <span className="text-xs font-medium mt-1">New</span>
+              </button>
+              <MobileNavButton label="Select" icon={<IconListChecks size={22}/>} isActive={isSelectMode} onClick={handleToggleSelectMode} />
+              <MobileNavButton label="Import" icon={<IconUpload size={22}/>} onClick={handleImportClick} />
+            </>
+          )}
       </div>
       
-      {isSelectMode && (
-          <div className="fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom)+0.5rem)] left-1/2 -translate-x-1/2 sm:bottom-4 sm:left-auto sm:right-4 sm:translate-x-0 z-30">
-              <div className="bg-background border border-border shadow-lg rounded-full flex items-center justify-between gap-4 p-2 pl-4">
-                  <span className="text-sm font-semibold text-foreground">{selectedBundleIds.size} selected</span>
-                  <div className="flex items-center gap-2">
-                      <div className="relative" ref={actionMenuRef}>
-                          <button onClick={() => setIsActionMenuOpen(p => !p)} className="px-4 py-2 text-sm font-medium rounded-full bg-primary text-primary-foreground hover:bg-primary/90">
-                              Actions
-                          </button>
-                          {isActionMenuOpen && (
-                              <div className="absolute bottom-full right-0 mb-2 w-48 bg-popover rounded-md shadow-lg z-10 border border-border">
-                                  <ul className="py-1">
-                                      <li><button disabled={selectedBundleIds.size < 2} onClick={() => { setIsMergeModalOpen(true); setIsActionMenuOpen(false); }} className="w-full text-left flex items-center gap-3 px-4 py-2 text-sm text-foreground hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed"><IconCopy size={16}/> Merge</button></li>
-                                      <li><button disabled={selectedBundleIds.size === 0} onClick={handleArchiveSelected} className="w-full text-left flex items-center gap-3 px-4 py-2 text-sm text-foreground hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed"><IconArchive size={16}/> Archive</button></li>
-                                      <li><button disabled={selectedBundleIds.size === 0} onClick={() => { setIsBulkDeleteConfirmOpen(true); setIsActionMenuOpen(false); }} className="w-full text-left flex items-center gap-3 px-4 py-2 text-sm text-destructive hover:bg-destructive/10 disabled:opacity-50 disabled:cursor-not-allowed"><IconTrash size={16}/> Delete</button></li>
-                                  </ul>
-                              </div>
-                          )}
-                      </div>
-                      <button onClick={handleToggleSelectMode} className="p-2 text-muted-foreground hover:bg-accent rounded-full"><IconX /></button>
-                  </div>
+      <div className="hidden sm:flex fixed bottom-4 right-4 z-30">
+        {isSelectMode && (
+          <div className="bg-background border border-border shadow-lg rounded-full flex items-center justify-between gap-2 p-2 pl-4">
+              <span className="text-sm font-semibold text-foreground whitespace-nowrap">{selectedBundleIds.size} selected</span>
+              <div className="flex items-center gap-1">
+                  {showRecycleBin ? (
+                    <>
+                      <button disabled={selectedBundleIds.size === 0} onClick={handleBulkRestore} className="p-2 text-muted-foreground enabled:hover:text-primary rounded-full disabled:opacity-50" title="Restore"><IconHistory size={20}/></button>
+                      <button disabled={selectedBundleIds.size === 0} onClick={() => setIsBulkPermanentDeleteConfirmOpen(true)} className="p-2 text-muted-foreground enabled:hover:text-destructive rounded-full disabled:opacity-50" title="Delete Forever"><IconTrash size={20}/></button>
+                    </>
+                  ) : showArchived ? (
+                    <>
+                      <button disabled={selectedBundleIds.size === 0} onClick={handleBulkUnarchive} className="p-2 text-muted-foreground enabled:hover:text-primary rounded-full disabled:opacity-50" title="Unarchive"><IconArchiveRestore size={20}/></button>
+                      <button disabled={selectedBundleIds.size === 0} onClick={() => setIsBulkDeleteConfirmOpen(true)} className="p-2 text-muted-foreground enabled:hover:text-destructive rounded-full disabled:opacity-50" title="Move to Bin"><IconRecycle size={20}/></button>
+                    </>
+                  ) : (
+                    <>
+                      <button disabled={selectedBundleIds.size < 2} onClick={() => setIsMergeModalOpen(true)} className="p-2 text-muted-foreground enabled:hover:text-primary rounded-full disabled:opacity-50" title="Merge"><IconCopy size={20}/></button>
+                      <button disabled={selectedBundleIds.size === 0} onClick={handleArchiveSelected} className="p-2 text-muted-foreground enabled:hover:text-primary rounded-full disabled:opacity-50" title="Archive"><IconArchive size={20}/></button>
+                      <button disabled={selectedBundleIds.size === 0} onClick={() => setIsBulkDeleteConfirmOpen(true)} className="p-2 text-muted-foreground enabled:hover:text-destructive rounded-full disabled:opacity-50" title="Delete"><IconTrash size={20}/></button>
+                    </>
+                  )}
+                  <button onClick={handleToggleSelectMode} className="p-2 text-muted-foreground hover:bg-accent rounded-full"><IconX /></button>
               </div>
           </div>
-      )}
+        )}
+      </div>
 
        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
         <div>
@@ -528,18 +619,32 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigateToEditor, onNavigateT
           <p className="text-muted-foreground">{pageDescription}</p>
         </div>
         <div className="hidden sm:flex items-center gap-2">
-            {!showRecycleBin && !showArchived && <button onClick={handleToggleSelectMode} className={`px-4 py-2 text-sm font-medium rounded-md ${isSelectMode ? 'bg-primary/20 text-primary' : 'bg-primary/10 text-primary hover:bg-primary/20'}`}>Select</button>}
-            <button onClick={() => setIsCreateModalOpen(true)} className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-primary-foreground bg-primary rounded-md hover:bg-primary/90"><IconPlus size={18} /> New</button>
-            <button onClick={handleImportClick} className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-primary bg-primary/10 rounded-md hover:bg-primary/20"><IconUpload size={18} /> Import</button>
+            {showRecycleBin ? (
+                <>
+                  <button onClick={() => setIsRestoreAllFromBinConfirmOpen(true)} disabled={!allBundles.deleted || allBundles.deleted.length === 0} className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-primary bg-primary/10 rounded-md hover:bg-primary/20 disabled:opacity-50"><IconHistory size={18} /> Restore All</button>
+                  <button onClick={() => setIsDeleteAllFromBinConfirmOpen(true)} disabled={!allBundles.deleted || allBundles.deleted.length === 0} className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-destructive-foreground bg-destructive rounded-md hover:bg-destructive/90 disabled:opacity-50"><IconTrash size={18} /> Delete All</button>
+                </>
+            ) : showArchived ? (
+                <>
+                  <button onClick={() => setIsUnarchiveAllConfirmOpen(true)} disabled={!allBundles.archived || allBundles.archived.length === 0} className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-primary bg-primary/10 rounded-md hover:bg-primary/20 disabled:opacity-50"><IconArchiveRestore size={18} /> Unarchive All</button>
+                  <button onClick={() => setIsMoveAllArchivedToBinConfirmOpen(true)} disabled={!allBundles.archived || allBundles.archived.length === 0} className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-destructive bg-destructive/10 rounded-md hover:bg-destructive/20 disabled:opacity-50"><IconTrash size={18} /> Move all to Bin</button>
+                </>
+            ) : (
+                <>
+                    <button onClick={handleToggleSelectMode} className={`px-4 py-2 text-sm font-medium rounded-md ${isSelectMode ? 'bg-primary/20 text-primary' : 'bg-primary/10 text-primary hover:bg-primary/20'}`}>Select</button>
+                    <button onClick={() => setIsCreateModalOpen(true)} className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-primary-foreground bg-primary rounded-md hover:bg-primary/90"><IconPlus size={18} /> New</button>
+                    <button onClick={handleImportClick} className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-primary bg-primary/10 rounded-md hover:bg-primary/20"><IconUpload size={18} /> Import</button>
+                </>
+            )}
         </div>
         <input type="file" ref={fileInputRef} onChange={handleFileImport} accept=".slpkg" className="hidden" />
       </div>
 
         <div>
-          <div className="relative mb-6">
-            <IconSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={20} />
-            <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder={`Search ${pageTitle.toLowerCase()}...`} className="w-full pl-10 pr-4 py-2 bg-card border border-input rounded-md focus:outline-none focus:ring-1 focus:ring-ring"/>
-          </div>
+            <div className="relative mb-6">
+                <IconSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={20} />
+                <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder={`Search ${pageTitle.toLowerCase()}...`} className="w-full pl-10 pr-4 py-2 bg-card border border-input rounded-md focus:outline-none focus:ring-1 focus:ring-ring"/>
+            </div>
 
           {showArchived ? (
              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
@@ -561,12 +666,12 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigateToEditor, onNavigateT
             </>
           )}
 
-          {currentBundles.length === 0 && (
+          {currentList.length === 0 && (
             <div className="text-center py-16 px-6 bg-card border-2 border-dashed border-border rounded-lg">
               <IconPackage size={48} className="mx-auto text-muted-foreground" />
               <h3 className="mt-4 text-xl font-semibold text-foreground">{searchQuery ? 'No Matching Bundles' : 'No Bundles Here'}</h3>
               <p className="mt-2 text-muted-foreground">
-                {searchQuery ? 'Try adjusting your search query.' : (showRecycleBin ? 'Your recycle bin is empty.' : 'Create your first bundle to get started!')}
+                {searchQuery ? 'Try adjusting your search query.' : (showRecycleBin ? 'Your recycle bin is empty.' : (showArchived ? 'You have no archived bundles.' : 'Create your first bundle to get started!'))}
               </p>
             </div>
           )}
@@ -583,6 +688,37 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigateToEditor, onNavigateT
       }>
         <p>Are you sure you want to move {selectedBundleIds.size} bundles to the Recycle Bin?</p>
       </Modal>
+      
+      <Modal isOpen={isBulkPermanentDeleteConfirmOpen} onClose={() => setIsBulkPermanentDeleteConfirmOpen(false)} title={`Permanently Delete ${selectedBundleIds.size} Bundles`} footer={
+        <><button onClick={() => setIsBulkPermanentDeleteConfirmOpen(false)} className="px-4 py-2 font-medium bg-muted rounded-md">Cancel</button><button onClick={handleBulkPermanentDelete} className="px-4 py-2 font-medium text-destructive-foreground bg-destructive rounded-md">Delete Forever</button></>
+      }>
+        <p>Are you sure you want to permanently delete {selectedBundleIds.size} bundles? This action cannot be undone.</p>
+      </Modal>
+      
+      <Modal isOpen={isDeleteAllFromBinConfirmOpen} onClose={() => setIsDeleteAllFromBinConfirmOpen(false)} title="Empty Recycle Bin" footer={
+        <><button onClick={() => setIsDeleteAllFromBinConfirmOpen(false)} className="px-4 py-2 font-medium bg-muted rounded-md">Cancel</button><button onClick={handleDeleteAllFromBin} className="px-4 py-2 font-medium text-destructive-foreground bg-destructive rounded-md">Delete Forever</button></>
+      }>
+        <p>Are you sure you want to permanently delete all {allBundles.deleted.length} bundles in the Recycle Bin? This action cannot be undone.</p>
+      </Modal>
+      
+      <Modal isOpen={isRestoreAllFromBinConfirmOpen} onClose={() => setIsRestoreAllFromBinConfirmOpen(false)} title="Restore All" footer={
+        <><button onClick={() => setIsRestoreAllFromBinConfirmOpen(false)} className="px-4 py-2 font-medium bg-muted rounded-md">Cancel</button><button onClick={handleRestoreAllFromBin} className="px-4 py-2 font-medium text-primary-foreground bg-primary rounded-md">Restore All</button></>
+      }>
+        <p>Are you sure you want to restore all {allBundles.deleted.length} bundles from the Recycle Bin?</p>
+      </Modal>
+
+      <Modal isOpen={isUnarchiveAllConfirmOpen} onClose={() => setIsUnarchiveAllConfirmOpen(false)} title="Unarchive All" footer={
+        <><button onClick={() => setIsUnarchiveAllConfirmOpen(false)} className="px-4 py-2 font-medium bg-muted rounded-md">Cancel</button><button onClick={handleUnarchiveAll} className="px-4 py-2 font-medium text-primary-foreground bg-primary rounded-md">Unarchive All</button></>
+      }>
+        <p>Are you sure you want to unarchive all {allBundles.archived.length} bundles?</p>
+      </Modal>
+      
+      <Modal isOpen={isMoveAllArchivedToBinConfirmOpen} onClose={() => setIsMoveAllArchivedToBinConfirmOpen(false)} title="Move All to Bin" footer={
+        <><button onClick={() => setIsMoveAllArchivedToBinConfirmOpen(false)} className="px-4 py-2 font-medium bg-muted rounded-md">Cancel</button><button onClick={handleMoveAllArchivedToBin} className="px-4 py-2 font-medium text-destructive-foreground bg-destructive rounded-md">Move to Bin</button></>
+      }>
+        <p>Are you sure you want to move all {allBundles.archived.length} archived bundles to the Recycle Bin?</p>
+      </Modal>
+
 
       <Modal isOpen={!!importConflict} onClose={() => setImportConflict(null)} title="Import Conflict" footer={
         <><button onClick={() => setImportConflict(null)} className="px-4 py-2 font-medium bg-muted text-foreground rounded-md hover:bg-accent">Cancel</button><button onClick={handleImportKeepBoth} className="px-4 py-2 font-medium text-secondary-foreground bg-secondary rounded-md hover:bg-secondary/90">Keep Both</button><button onClick={handleImportReplace} className="px-4 py-2 font-medium text-primary-foreground bg-primary rounded-md hover:bg-primary/90">Replace</button></>
