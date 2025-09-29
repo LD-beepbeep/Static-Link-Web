@@ -57,8 +57,8 @@ const OnboardingModal: React.FC<{onClose: () => void}> = ({ onClose }) => (
                  <li className="flex items-start gap-3">
                     <span className="font-bold text-primary">3.</span>
                     <div>
-                        <strong className="font-semibold text-foreground">Share Offline:</strong>
-                        <p>Download your bundle as a single file (.slpkg) and share it with anyone.</p>
+                        <strong className="font-semibold text-foreground">Sharing is easier than ever:</strong>
+                        <p>Share via QR, .slpkg or html!</p>
                     </div>
                 </li>
             </ul>
