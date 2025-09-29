@@ -9,7 +9,7 @@ const BookmarkletScreen: React.FC<BookmarkletScreenProps> = ({ onBack }) => {
     const [copied, setCopied] = useState(false);
 
     // This creates the bookmarklet code dynamically based on the current app's origin
-    const bookmarkletCode = `javascript:(function(){const url='${window.location.origin}${window.location.pathname}#/home?url='+encodeURIComponent(window.location.href)+'&title='+encodeURIComponent(document.title);window.open(url,'_blank');})();`;
+    const bookmarkletCode = `javascript:(function(){const url='${window.location.origin}${window.location.pathname}#/home?url='+encodeURIComponent(window.location.href)+'&title='+encodeURIComponent(document.title);window.open(url,'_blank','popup');})();`;
     
     const handleCopy = () => {
         navigator.clipboard.writeText(bookmarkletCode);
@@ -33,6 +33,9 @@ const BookmarkletScreen: React.FC<BookmarkletScreenProps> = ({ onBack }) => {
                     <h2 className="text-xl font-semibold text-card-foreground">How It Works</h2>
                     <p className="text-muted-foreground mt-2">
                         The bookmarklet is a special browser bookmark. When you're on a webpage you want to save, just click it. A new StaticLink tab will open, ready to add the link to your 'Inbox' bundle.
+                    </p>
+                    <p className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800/50 p-3 rounded-md mt-4">
+                        <strong>Note:</strong> Your browser's pop-up blocker might prevent the bookmarklet from opening a new tab. If it doesn't work, please <strong>allow pop-ups</strong> from this website for the feature to work correctly.
                     </p>
                 </div>
                 
