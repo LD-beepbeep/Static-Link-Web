@@ -49,6 +49,7 @@ import {
   Trash,
   ClipboardCopy as ClipboardCopyIcon,
   Home as HomeIcon,
+  ArchiveRestore as ArchiveRestoreIcon,
 } from 'lucide-react';
 import type { LucideProps } from 'lucide-react';
 import React from 'react';
@@ -104,3 +105,4 @@ export const IconRecycle = (props: LucideProps) => <Trash {...props} />;
 export const IconClipboardCopy = (props: LucideProps) => <ClipboardCopyIcon {...props} />
 export const IconHome = (props: LucideProps) => <HomeIcon {...props} />;
 export const IconQrCode = (props: LucideProps) => <QrCode {...props} />;
+export const IconArchiveRestore = (props: LucideProps) => <ArchiveRestoreIcon {...props} />;
