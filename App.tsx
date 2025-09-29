@@ -4,10 +4,10 @@ import BundleEditorScreen from './screens/BundleEditorScreen';
 import ShareScreen from './screens/ShareScreen';
 import BookmarkletScreen from './screens/BookmarkletScreen'; // New screen
 import QrScanner from './components/QrScanner';
-import { Screen, ItemType, LinkItem } from './types';
+import { Screen } from './types';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { Header } from './components/Header';
-import { IconCheck } from './components/icons';
+import { IconCheck, IconX } from './components/icons';
 import { useBundles } from './hooks/useBundles';
 import { db } from './db/db';
 
@@ -15,9 +15,10 @@ import { db } from './db/db';
 interface Toast {
   id: number;
   message: string;
+  type: 'success' | 'error';
 }
 interface ToastContextType {
-  showToast: (message: string) => void;
+  showToast: (message: string, type?: 'success' | 'error') => void;
 }
 const ToastContext = createContext<ToastContextType | null>(null);
 
@@ -30,9 +31,13 @@ export const useToast = () => {
 const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [toasts, setToasts] = useState<Toast[]>([]);
 
-  const showToast = useCallback((message: string) => {
+  const showToast = useCallback((message: string, type: 'success' | 'error' = 'success') => {
+    // FIX: Disable toasts on mobile viewports as requested by the user for a cleaner experience.
+    if (window.innerWidth < 640) {
+        return;
+    }
     const id = Date.now();
-    setToasts(prev => [...prev, { id, message }]);
+    setToasts(prev => [...prev, { id, message, type }]);
     setTimeout(() => {
       setToasts(prev => prev.filter(t => t.id !== id));
     }, 3000);
@@ -43,8 +48,8 @@ const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ children }) =>
       {children}
       <div className="toast-container">
         {toasts.map(toast => (
-          <div key={toast.id} className="toast" role="status" aria-live="polite">
-            <IconCheck size={16} />
+          <div key={toast.id} className={`toast toast-${toast.type}`} role="status" aria-live="polite">
+            {toast.type === 'success' ? <IconCheck size={16} /> : <IconX size={16} />}
             <span>{toast.message}</span>
           </div>
         ))}
@@ -86,42 +91,20 @@ const AppContent: React.FC = () => {
   const [showRecycleBin, setShowRecycleBin] = useState(false);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const { showToast } = useToast();
-  const { bundles, addBundle, importBundle, addItemToBundle } = useBundles();
+  const { importBundle } = useBundles();
 
   const handleScannedData = async (data: string) => {
     setIsScannerOpen(false);
     try {
+        // The QR scanner now pre-validates the data, so we can assume it's a valid bundle.
         const parsed = JSON.parse(data);
-        if(parsed.staticlink_qr && parsed.bundle) {
-            const newId = await importBundle(parsed.bundle);
-            showToast(`Imported bundle "${parsed.bundle.title}"`);
-            navigateToEditor(newId);
-            return;
-        }
+        const newId = await importBundle(parsed.bundle);
+        showToast(`Imported bundle: "${parsed.bundle.title}"`);
+        navigateToEditor(newId);
     } catch (e) {
-        // Not a JSON bundle, treat as text/URL
-    }
-
-    // Handle as a regular URL/text
-    if(bundles) {
-        let targetBundle = bundles.find(b => b.title.toLowerCase() === 'inbox');
-        if (!targetBundle) {
-            const newBundleId = await addBundle('Inbox');
-            targetBundle = { id: newBundleId, title: 'Inbox', items: [], createdAt: '', updatedAt: ''};
-        }
-        
-        const newLink: LinkItem = {
-          id: crypto.randomUUID(),
-          type: ItemType.LINK,
-          title: data,
-          url: data,
-          createdAt: new Date().toISOString()
-        };
-        
-        // FIX: Replaced direct db.bundles.update with addItemToBundle hook to prevent circular reference errors.
-        await addItemToBundle(targetBundle.id, newLink);
-        showToast(`Link added to "${targetBundle.title}"`);
-        navigateToEditor(targetBundle.id);
+        // This is a fallback, but should rarely be hit.
+        console.error("Error processing scanned data:", e);
+        showToast("Failed to process QR code data.", "error");
     }
   };
 
@@ -145,6 +128,16 @@ const AppContent: React.FC = () => {
       navigate('/');
   }, [navigate]);
   const navigateToBookmarklet = useCallback(() => navigate('/bookmarklet'), [navigate]);
+  const navigateToArchive = useCallback(() => {
+    setShowRecycleBin(false);
+    setShowArchived(true);
+    navigate('/');
+  }, [navigate]);
+  const navigateToRecycleBin = useCallback(() => {
+    setShowArchived(false);
+    setShowRecycleBin(true);
+    navigate('/');
+  }, [navigate]);
   
   const renderScreen = () => {
     switch (route.screen) {
@@ -165,6 +158,9 @@ const AppContent: React.FC = () => {
             setShowRecycleBin={setShowRecycleBin}
             bookmarkletParams={route.params}
             onOpenScanner={() => setIsScannerOpen(true)}
+            onNavigateToArchive={navigateToArchive}
+            onNavigateHome={navigateHome}
+            onNavigateToRecycleBin={navigateToRecycleBin}
         />;
     }
   };
@@ -176,8 +172,8 @@ const AppContent: React.FC = () => {
         <Header
           onNavigateHome={navigateHome}
           onNavigateToBookmarklet={navigateToBookmarklet}
-          onArchivedClick={() => { navigateHome(); setShowArchived(true); }}
-          onRecycleBinClick={() => { navigateHome(); setShowRecycleBin(true); }}
+          onArchivedClick={navigateToArchive}
+          onRecycleBinClick={navigateToRecycleBin}
         />
         <main className="flex-grow">
           <div key={`${route.screen}-${route.bundleId}-${showArchived}-${showRecycleBin}`} className="screen">
