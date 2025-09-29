@@ -40,6 +40,40 @@ const NoteItemCard: React.FC<{ item: NoteItem; onUpdate: (updates: Partial<NoteI
     const [isEditing, setIsEditing] = useState(false);
     const [editText, setEditText] = useState(item.text);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
+    const [activeStyles, setActiveStyles] = useState<Set<string>>(new Set());
+
+    const checkActiveStyles = useCallback(() => {
+        const textarea = textareaRef.current;
+        if (!textarea) return;
+        const { selectionStart, value } = textarea;
+        const newStyles = new Set<string>();
+        
+        const check = (start: string, end: string, style: string) => {
+            let i = selectionStart - start.length;
+            while(i >= 0) {
+                if (value.substring(i, i + start.length) === start) {
+                    const closing = value.indexOf(end, i + start.length);
+                    if (closing !== -1 && closing >= selectionStart - start.length) {
+                        newStyles.add(style);
+                    }
+                    return;
+                }
+                if (value[i] === '\n') break;
+                i--;
+            }
+        };
+        
+        check('**', '**', 'bold');
+        check('*', '*', 'italic');
+        check('`', '`', 'code');
+
+        const lineStart = value.lastIndexOf('\n', selectionStart - 1) + 1;
+        if (value.substring(lineStart, lineStart + 2) === '> ') newStyles.add('quote');
+        if (value.substring(lineStart, lineStart + 2) === '- ') newStyles.add('list');
+
+        setActiveStyles(newStyles);
+    }, [textareaRef]);
+
 
     const handleSave = () => { onUpdate({ text: editText }); setIsEditing(false); };
     
@@ -64,19 +98,31 @@ const NoteItemCard: React.FC<{ item: NoteItem; onUpdate: (updates: Partial<NoteI
         }
         setEditText(value.substring(0, selectionStart) + newText + value.substring(selectionEnd));
         textarea.focus();
+        setTimeout(checkActiveStyles, 0);
     };
 
     if (isEditing) {
         return (
             <div className="mt-2 space-y-2">
                  <div className="flex items-center gap-1 border border-input rounded-t-md p-1 bg-muted/50">
-                    <button onClick={() => applyStyle('bold')} title="Bold (Ctrl+B)" className="p-2 rounded hover:bg-accent"><IconBold size={16}/></button>
-                    <button onClick={() => applyStyle('italic')} title="Italic (Ctrl+I)" className="p-2 rounded hover:bg-accent"><IconItalic size={16}/></button>
-                    <button onClick={() => applyStyle('code')} title="Code" className="p-2 rounded hover:bg-accent"><IconCodeInline size={16}/></button>
-                    <button onClick={() => applyStyle('quote')} title="Quote" className="p-2 rounded hover:bg-accent"><IconQuote size={16}/></button>
-                    <button onClick={() => applyStyle('list')} title="List" className="p-2 rounded hover:bg-accent"><IconList size={16}/></button>
+                    <button onClick={() => applyStyle('bold')} title="Bold (Ctrl+B)" className={`p-2 rounded hover:bg-accent ${activeStyles.has('bold') ? 'bg-primary/20 text-primary' : ''}`}><IconBold size={16}/></button>
+                    <button onClick={() => applyStyle('italic')} title="Italic (Ctrl+I)" className={`p-2 rounded hover:bg-accent ${activeStyles.has('italic') ? 'bg-primary/20 text-primary' : ''}`}><IconItalic size={16}/></button>
+                    <button onClick={() => applyStyle('code')} title="Code" className={`p-2 rounded hover:bg-accent ${activeStyles.has('code') ? 'bg-primary/20 text-primary' : ''}`}><IconCodeInline size={16}/></button>
+                    <button onClick={() => applyStyle('quote')} title="Quote" className={`p-2 rounded hover:bg-accent ${activeStyles.has('quote') ? 'bg-primary/20 text-primary' : ''}`}><IconQuote size={16}/></button>
+                    <button onClick={() => applyStyle('list')} title="List" className={`p-2 rounded hover:bg-accent ${activeStyles.has('list') ? 'bg-primary/20 text-primary' : ''}`}><IconList size={16}/></button>
                 </div>
-                <textarea ref={textareaRef} value={editText} onChange={(e) => setEditText(e.target.value)} rows={8} autoFocus className="w-full text-sm p-2 bg-transparent border border-input rounded-b-md focus:outline-none focus:ring-1 focus:ring-ring font-mono" placeholder="Write in Markdown..."/>
+                <textarea 
+                    ref={textareaRef} 
+                    value={editText} 
+                    onChange={(e) => setEditText(e.target.value)} 
+                    rows={8} 
+                    autoFocus 
+                    onSelect={checkActiveStyles}
+                    onKeyUp={checkActiveStyles}
+                    onFocus={checkActiveStyles}
+                    onClick={checkActiveStyles}
+                    className="w-full text-sm p-2 bg-transparent border border-t-0 border-input rounded-b-md focus:outline-none focus:ring-1 focus:ring-ring font-mono" placeholder="Write in Markdown..."
+                />
                 <div className="flex justify-end gap-2">
                     <button onClick={() => setIsEditing(false)} className="px-3 py-1 text-xs font-medium text-foreground bg-muted rounded-md hover:bg-accent">Cancel</button>
                     <button onClick={handleSave} className="px-3 py-1 text-xs font-medium text-primary-foreground bg-primary rounded-md hover:bg-primary/90">Save (Ctrl+S)</button>
@@ -211,6 +257,15 @@ const ItemCard = React.memo<{
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [menuView, setMenuView] = useState<'main' | 'color'>('main');
     const menuRef = useRef<HTMLDivElement>(null);
+    
+    const itemColors: Record<string, { bg: string; button: string }> = {
+        red:    { bg: 'bg-red-500/10 dark:bg-red-500/20 border-red-500/20', button: 'bg-red-400' },
+        yellow: { bg: 'bg-yellow-500/10 dark:bg-yellow-500/20 border-yellow-500/20', button: 'bg-yellow-400' },
+        green:  { bg: 'bg-green-500/10 dark:bg-green-500/20 border-green-500/20', button: 'bg-green-400' },
+        blue:   { bg: 'bg-blue-500/10 dark:bg-blue-500/20 border-blue-500/20', button: 'bg-blue-400' },
+        indigo: { bg: 'bg-indigo-500/10 dark:bg-indigo-500/20 border-indigo-500/20', button: 'bg-indigo-400' },
+        purple: { bg: 'bg-purple-500/10 dark:bg-purple-500/20 border-purple-500/20', button: 'bg-purple-400' },
+    };
 
     const handleCopy = (text: string) => { navigator.clipboard.writeText(text); showToast('Copied to clipboard!'); }
     const handleDownload = (itemWithContent: {content: string, mimeType: string, filename: string}) => saveAs(base64ToBlob(itemWithContent.content, itemWithContent.mimeType), itemWithContent.filename);
@@ -246,7 +301,7 @@ const ItemCard = React.memo<{
     };
     
     const cardContent = (
-        <div className={`p-4 rounded-lg border flex items-start gap-3 transition-all duration-200 ${item.color || 'bg-card'} ${isSelected ? 'ring-2 ring-primary' : ''}`} style={{ borderColor: item.color ? 'transparent' : 'hsl(var(--border))' }}>
+        <div className={`p-4 rounded-lg border flex items-start gap-3 transition-all duration-200 ${item.color && itemColors[item.color] ? itemColors[item.color].bg : 'bg-card border-border'} ${isSelected ? 'ring-2 ring-primary' : ''}`}>
             {!isSelectMode && <div className="flex-shrink-0 w-8 h-10 flex items-center justify-center cursor-grab active:cursor-grabbing text-muted-foreground/50 hover:text-muted-foreground"><IconGripVertical size={20} /></div>}
             {isSelectMode && <input type="checkbox" checked={isSelected} onChange={onToggleSelect} className="h-5 w-5 rounded border-gray-300 text-primary focus:ring-primary mt-2 flex-shrink-0"/>}
             <div className="flex-grow min-w-0" onClick={() => isSelectMode && onToggleSelect()}>
@@ -260,11 +315,11 @@ const ItemCard = React.memo<{
                                     {menuView === 'main' ? (
                                         <ul className="py-1 w-48">
                                             <li><button onClick={() => { onUpdateItem({ isPinned: !item.isPinned }); setIsMenuOpen(false); }} className="w-full text-left flex items-center gap-3 px-4 py-2 text-sm text-foreground hover:bg-accent">{item.isPinned ? <IconPinOff size={16}/> : <IconPin size={16}/>} {item.isPinned ? 'Unpin' : 'Pin'}</button></li>
-                                            <li><button onClick={() => { onDuplicateItem(); setIsMenuOpen(false); }} className="w-full text-left flex items-center gap-3 px-4 py-2 text-sm text-foreground hover:bg-accent"><IconCopy size={16}/> Duplicate</button></li>
                                             {(item.type === ItemType.LINK || item.type === ItemType.NOTE || item.type === ItemType.CODE) && <li><button onClick={() => { handleCopy((item as any).url || (item as any).text || (item as any).code); setIsMenuOpen(false); }} className="w-full text-left flex items-center gap-3 px-4 py-2 text-sm text-foreground hover:bg-accent"><IconClipboardCopy size={16}/> Copy Content</button></li>}
                                             {(item.type === ItemType.FILE || item.type === ItemType.AUDIO || item.type === ItemType.DRAWING) && <li><button onClick={() => { handleDownload(item as any); setIsMenuOpen(false); }} className="w-full text-left flex items-center gap-3 px-4 py-2 text-sm text-foreground hover:bg-accent"><IconDownload size={16}/> Download</button></li>}
                                             <li><button onClick={() => setMenuView('color')} className="w-full text-left flex items-center gap-3 px-4 py-2 text-sm text-foreground hover:bg-accent"><IconPalette size={16}/> Color</button></li>
-                                            <li><button onClick={() => { onDeleteItem(item); setIsMenuOpen(false); }} className="w-full text-left flex items-center gap-3 px-4 py-2 text-sm text-destructive hover:bg-destructive/10"><IconTrash size={16}/> Delete</button></li>
+                                            <li><button onClick={() => { onDuplicateItem(); setIsMenuOpen(false); }} className="w-full text-left flex items-center gap-3 px-4 py-2 text-sm text-foreground hover:bg-accent"><IconCopy size={16}/> Duplicate</button></li>
+                                            <li><button onClick={() => { onDeleteItem(item); setIsMenuOpen(false); }} className="w-full text-left flex items-center gap-3 px-4 py-2 text-sm text-destructive dark:text-red-500 hover:bg-destructive/10"><IconTrash size={16}/> Delete</button></li>
                                         </ul>
                                     ) : (
                                         <div>
@@ -273,11 +328,11 @@ const ItemCard = React.memo<{
                                                 <span className="text-sm font-semibold mx-auto pr-8">Select Color</span>
                                             </div>
                                             <div className="p-2 flex justify-center gap-2">
-                                                {['bg-red-500/20', 'bg-yellow-500/20', 'bg-green-500/20', 'bg-blue-500/20', 'bg-indigo-500/20', 'bg-purple-500/20'].map(c => 
-                                                    <button key={c} onClick={() => { onUpdateItem({ color: c }); setIsMenuOpen(false); }} className={`w-6 h-6 rounded-full ${c.replace('/20', '')} hover:scale-110 transition-transform ring-2 ring-offset-2 ring-offset-popover ${item.color === c ? 'ring-primary' : 'ring-transparent'}`}/>
+                                                {Object.entries(itemColors).map(([key, color]) => 
+                                                    <button key={key} onClick={() => { onUpdateItem({ color: key }); setIsMenuOpen(false); }} className={`w-6 h-6 rounded-full ${color.button} hover:scale-110 transition-transform ring-2 ring-offset-2 ring-offset-popover ${item.color === key ? 'ring-primary' : 'ring-transparent'}`}/>
                                                 )}
                                             </div>
-                                            <button onClick={() => { onUpdateItem({ color: '' }); setIsMenuOpen(false); }} className="w-full text-xs text-center p-2 hover:bg-accent rounded-b-md border-t border-border">Clear Color</button>
+                                            <button onClick={() => { onUpdateItem({ color: undefined }); setIsMenuOpen(false); }} className="w-full text-xs text-center p-2 hover:bg-accent rounded-b-md border-t border-border">Clear Color</button>
                                         </div>
                                     )}
                                 </div>
@@ -303,7 +358,7 @@ const BundleEditorSkeleton: React.FC = () => (
 );
 
 const BundleEditorScreen: React.FC<BundleEditorScreenProps> = ({ bundleId, onBack, onNavigateToShare }) => {
-  const { updateBundle, removeItemFromBundle, moveItemInBundle, updateItemInBundle, removeItemsFromBundle, duplicateItemInBundle } = useBundles();
+  const { updateBundle, removeItemFromBundle, moveItemInBundle, updateItemInBundle, removeItemsFromBundle, duplicateItemInBundle, duplicateItemsInBundle } = useBundles();
   const bundle = useLiveQuery(() => db.bundles.get(bundleId), [bundleId]);
   
   const [title, setTitle] = useState(bundle?.title || '');
@@ -342,16 +397,26 @@ const BundleEditorScreen: React.FC<BundleEditorScreenProps> = ({ bundleId, onBac
   const handleUpdateItem = useCallback((itemId: string, updates: Partial<BundleItem>) => { updateItemInBundle(bundleId, itemId, updates); }, [bundleId, updateItemInBundle]);
   const handleDuplicateItem = useCallback((itemId: string) => { duplicateItemInBundle(bundleId, itemId); }, [bundleId, duplicateItemInBundle]);
   
+  const handleCancelSelectMode = () => {
+    setIsSelectMode(false);
+    setSelectedItemIds(new Set());
+  };
+  
+  const handleDuplicateSelected = () => {
+    if (selectedItemIds.size > 0) {
+        duplicateItemsInBundle(bundleId, selectedItemIds);
+        handleCancelSelectMode();
+    }
+  };
+
   const handleDeleteConfirm = () => {
       if (isSelectMode && selectedItemIds.size > 0) {
           removeItemsFromBundle(bundleId, selectedItemIds);
-          setIsSelectMode(false);
-          setSelectedItemIds(new Set());
-          setItemToDelete(null); // FIX: Close modal after bulk delete
+          handleCancelSelectMode();
       } else if(itemToDelete && bundle) {
           removeItemFromBundle(bundle.id, itemToDelete.id);
-          setItemToDelete(null);
       }
+      setItemToDelete(null);
   };
 
   const handleDragStart = (e: React.DragEvent, index: number) => { setDraggedItemIndex(index); e.dataTransfer.effectAllowed = 'move'; };
@@ -423,7 +488,7 @@ const BundleEditorScreen: React.FC<BundleEditorScreenProps> = ({ bundleId, onBac
       
       {isAddItemSheetOpen && <AddItemSheet onClose={() => setIsAddItemSheetOpen(false)} />}
 
-      <header className="mb-6"><button onClick={onBack} className="flex items-center gap-2 text-sm font-medium text-primary hover:underline mb-4"><IconArrowLeft size={16} />Back to My Bundles</button><div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4"><div className="min-w-0 flex-1">{isEditingTitle ? <input ref={titleInputRef} type="text" value={title} onChange={e => setTitle(e.target.value)} onBlur={handleTitleBlur} onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()} className="text-3xl font-bold bg-transparent focus:outline-none w-full text-foreground -ml-1 p-1 rounded-md ring-1 ring-ring"/> : <h1 onClick={() => setIsEditingTitle(true)} className="text-3xl font-bold w-full text-foreground -ml-1 p-1 rounded-md hover:bg-accent/50 cursor-pointer truncate" title="Click to edit">{bundle.title}</h1>}</div><div className="flex items-center gap-2 flex-shrink-0 w-full sm:w-auto justify-end"><button onClick={() => setIsPasswordModalOpen(true)} title="Manage Protection" className="flex-shrink-0 flex items-center justify-center h-9 w-9 font-semibold text-primary bg-primary/10 rounded-md hover:bg-primary/20">{bundle.isLocked ? <IconLock size={16} /> : <IconUnlock size={16} />}</button><button onClick={() => onNavigateToShare(bundle.id)} className="flex items-center gap-1.5 px-4 py-1.5 text-sm font-semibold text-primary-foreground bg-primary rounded-md hover:bg-primary/90 shadow-sm"><IconShare2 size={14} />Share</button></div></div></header>
+      <header className="mb-6"><button onClick={onBack} className="flex items-center gap-2 text-sm font-medium text-primary hover:underline mb-4"><IconArrowLeft size={16} />Back to My Bundles</button><div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4"><div className="min-w-0 flex-1 w-full">{isEditingTitle ? <input ref={titleInputRef} type="text" value={title} onChange={e => setTitle(e.target.value)} onBlur={handleTitleBlur} onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()} className="text-3xl font-bold bg-transparent focus:outline-none w-full text-foreground -ml-1 p-1 rounded-md ring-1 ring-ring"/> : <h1 onClick={() => setIsEditingTitle(true)} className="text-3xl font-bold w-full text-foreground -ml-1 p-1 rounded-md hover:bg-accent/50 cursor-pointer truncate" title="Click to edit">{bundle.title}</h1>}</div><div className="flex items-center gap-2 flex-shrink-0 w-full sm:w-auto justify-end"><button onClick={() => setIsPasswordModalOpen(true)} title="Manage Protection" className="flex-shrink-0 flex items-center justify-center h-9 w-9 font-semibold text-primary bg-primary/10 rounded-md hover:bg-primary/20">{bundle.isLocked ? <IconLock size={16} /> : <IconUnlock size={16} />}</button><button onClick={() => onNavigateToShare(bundle.id)} className="flex items-center gap-1.5 px-4 py-1.5 text-sm font-semibold text-primary-foreground bg-primary rounded-md hover:bg-primary/90 shadow-sm"><IconShare2 size={14} />Share</button></div></div></header>
       
       <div className="hidden sm:block mb-6">
         {isAddItemFormVisible ? (
@@ -441,22 +506,35 @@ const BundleEditorScreen: React.FC<BundleEditorScreenProps> = ({ bundleId, onBac
 
       <div className="space-y-4">{processedItems.length > 0 ? (processedItems.map((item, index) => <div key={item.id} draggable={!isSelectMode} onDragStart={e => handleDragStart(e, index)} onDragOver={handleDragOver} onDrop={e => handleDrop(e, index)} className={`transition-opacity ${draggedItemIndex === index ? 'opacity-30' : ''}`}><ItemCard item={item} searchQuery={searchQuery} onUpdateItem={(updates) => handleUpdateItem(item.id, updates)} onDeleteItem={() => setItemToDelete(item)} onDuplicateItem={() => handleDuplicateItem(item.id)} isSelectMode={isSelectMode} isSelected={selectedItemIds.has(item.id)} onToggleSelect={() => handleToggleSelect(item.id)} /></div>)) : (<div className="text-center py-16 px-6 bg-card border-2 border-dashed border-border rounded-lg"><h3 className="text-xl font-semibold text-foreground">{searchQuery ? 'No Matching Items' : 'This Bundle is Empty'}</h3><p className="mt-2 text-muted-foreground">{searchQuery ? 'Try another search.' : 'Add your first item!'} </p></div>)}</div>
       
-      {isSelectMode && (
-          <div className="fixed bottom-0 left-0 right-0 sm:bottom-4 sm:left-auto sm:right-4 z-30">
-              <div className="bg-background border-t sm:border border-border shadow-lg sm:rounded-full flex items-center justify-between gap-4 p-2 pl-4 h-16 sm:h-auto">
-                  <span className="text-sm font-semibold text-foreground">{selectedItemIds.size} selected</span>
-                  <div className="flex items-center gap-2">
-                       <button 
-                          disabled={selectedItemIds.size === 0} 
-                          onClick={() => setItemToDelete({id:'bulk_delete'} as any)} 
-                          className="px-4 py-2 text-sm font-medium rounded-full bg-destructive text-destructive-foreground disabled:bg-muted disabled:text-muted-foreground"
-                       >
-                          Delete
-                       </button>
-                      <button onClick={() => setIsSelectMode(false)} className="p-2 text-muted-foreground hover:bg-accent rounded-full"><IconX /></button>
-                  </div>
-              </div>
-          </div>
+       {isSelectMode && (
+        <>
+            <div className="sm:hidden mobile-dock">
+                <button onClick={handleCancelSelectMode} className="flex-1 flex flex-col items-center justify-center h-full text-muted-foreground hover:text-primary">
+                    <IconX size={22}/>
+                    <span className="text-xs font-medium mt-1">{`Cancel (${selectedItemIds.size})`}</span>
+                </button>
+                <button onClick={handleDuplicateSelected} disabled={selectedItemIds.size === 0} className="flex-1 flex flex-col items-center justify-center h-full text-primary disabled:text-muted-foreground/50">
+                    <div className="h-14 w-14 bg-primary text-primary-foreground rounded-full shadow-lg flex items-center justify-center ring-4 ring-background -mt-6">
+                        <IconCopy size={28}/>
+                    </div>
+                    <span className="text-xs font-medium mt-1">Duplicate</span>
+                </button>
+                <button onClick={() => setItemToDelete({id:'bulk_delete'} as any)} disabled={selectedItemIds.size === 0} className="flex-1 flex flex-col items-center justify-center h-full text-muted-foreground hover:text-primary disabled:text-muted-foreground/50">
+                    <IconTrash size={22}/>
+                    <span className="text-xs font-medium mt-1">Delete</span>
+                </button>
+            </div>
+            <div className="hidden sm:flex fixed bottom-4 right-4 z-30">
+                <div className="bg-background border border-border shadow-lg rounded-full flex items-center justify-between gap-2 p-2 pl-4">
+                    <span className="text-sm font-semibold text-foreground whitespace-nowrap">{selectedItemIds.size} selected</span>
+                    <div className="flex items-center gap-1">
+                        <button disabled={selectedItemIds.size === 0} onClick={handleDuplicateSelected} className="p-2 text-muted-foreground enabled:hover:text-primary rounded-full disabled:opacity-50" title="Duplicate"><IconCopy size={20}/></button>
+                        <button disabled={selectedItemIds.size === 0} onClick={() => setItemToDelete({id:'bulk_delete'} as any)} className="p-2 text-muted-foreground enabled:hover:text-destructive rounded-full disabled:opacity-50" title="Delete"><IconTrash size={20}/></button>
+                        <button onClick={handleCancelSelectMode} className="p-2 text-muted-foreground hover:bg-accent rounded-full"><IconX /></button>
+                    </div>
+                </div>
+            </div>
+        </>
       )}
 
       <Modal isOpen={!!itemToDelete} onClose={() => setItemToDelete(null)} title={isSelectMode ? `Delete ${selectedItemIds.size} Items` : "Delete Item"} footer={<><button onClick={() => setItemToDelete(null)} className="px-4 py-2 font-medium bg-muted rounded-md">Cancel</button><button onClick={handleDeleteConfirm} className="px-4 py-2 font-medium text-destructive-foreground bg-destructive rounded-md">Delete</button></>}><p>Are you sure you want to delete {isSelectMode ? `${selectedItemIds.size} items` : `"${itemToDelete?.title}"`}?</p></Modal>
