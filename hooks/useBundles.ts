@@ -3,6 +3,8 @@ import { db } from '../db/db';
 import type { Bundle, BundleItem } from '../types';
 import { useCallback } from 'react';
 
+const MAX_ITEMS_PER_BUNDLE = 100000;
+
 export const useBundles = () => {
   const bundles = useLiveQuery(async () => {
     const allBundles = await db.bundles.toArray();
@@ -112,6 +114,16 @@ export const useBundles = () => {
     });
   }, []);
 
+  const unarchiveBundles = useCallback(async (ids: Set<string>) => {
+    await db.transaction('rw', 'bundles', async () => {
+      const bundlesToUpdate = await db.bundles.where('id').anyOf(Array.from(ids)).toArray();
+      for (const bundle of bundlesToUpdate) {
+        bundle.isArchived = false;
+      }
+      await db.bundles.bulkPut(bundlesToUpdate);
+    });
+  }, []);
+
   const restoreBundle = useCallback(async (id: string) => {
     // FIX: Refactored to use a transaction with `get` and `put` to avoid the
     // same circular reference issue in Dexie's `update` method.
@@ -126,9 +138,21 @@ export const useBundles = () => {
       }
     });
   }, []);
+  
+  const restoreBundles = useCallback(async (ids: string[]) => {
+    await db.transaction('rw', 'bundles', async () => {
+      const bundlesToRestore = await db.bundles.where('id').anyOf(ids).toArray();
+      const updatedBundles = bundlesToRestore.map(b => ({ ...b, isDeleted: false, deletedAt: undefined }));
+      await db.bundles.bulkPut(updatedBundles);
+    });
+  }, []);
 
   const permanentlyDeleteBundle = useCallback(async (id: string) => {
     await db.bundles.delete(id);
+  }, []);
+  
+  const permanentlyDeleteBundles = useCallback(async (ids: string[]) => {
+    await db.bundles.bulkDelete(ids);
   }, []);
   
   const mergeBundles = useCallback(async (bundleIds: string[], newTitle: string): Promise<string> => {
@@ -152,6 +176,9 @@ export const useBundles = () => {
     await db.transaction('rw', 'bundles', async () => {
       const bundle = await db.bundles.get(bundleId);
       if (bundle) {
+        if (bundle.items.length >= MAX_ITEMS_PER_BUNDLE) {
+            throw new Error(`Bundle cannot have more than ${MAX_ITEMS_PER_BUNDLE} items.`);
+        }
         bundle.items.push(item);
         bundle.updatedAt = new Date().toISOString();
         await db.bundles.put(bundle);
@@ -163,6 +190,9 @@ export const useBundles = () => {
     await db.transaction('rw', 'bundles', async () => {
         const bundle = await db.bundles.get(bundleId);
         if (bundle) {
+            if (bundle.items.length + items.length > MAX_ITEMS_PER_BUNDLE) {
+                throw new Error(`Adding these items would exceed the bundle limit of ${MAX_ITEMS_PER_BUNDLE}.`);
+            }
             bundle.items.push(...items);
             bundle.updatedAt = new Date().toISOString();
             await db.bundles.put(bundle);
@@ -203,6 +233,38 @@ export const useBundles = () => {
           await db.bundles.put(bundle);
         }
       }
+    });
+  }, []);
+
+  const duplicateItemsInBundle = useCallback(async (bundleId: string, itemIds: Set<string>) => {
+    await db.transaction('rw', 'bundles', async () => {
+        const bundle = await db.bundles.get(bundleId);
+        if (bundle) {
+            const itemsToDuplicate = bundle.items.filter(item => itemIds.has(item.id));
+            const newItems: BundleItem[] = itemsToDuplicate.map(originalItem => ({
+                ...JSON.parse(JSON.stringify(originalItem)), // Deep copy
+                id: crypto.randomUUID(),
+                createdAt: new Date().toISOString(),
+                isPinned: false,
+            }));
+
+            let lastIndex = -1;
+            for (let i = bundle.items.length - 1; i >= 0; i--) {
+                if (itemIds.has(bundle.items[i].id)) {
+                    lastIndex = i;
+                    break;
+                }
+            }
+
+            if (lastIndex !== -1) {
+                bundle.items.splice(lastIndex + 1, 0, ...newItems);
+            } else {
+                bundle.items.push(...newItems);
+            }
+            
+            bundle.updatedAt = new Date().toISOString();
+            await db.bundles.put(bundle);
+        }
     });
   }, []);
   
@@ -249,13 +311,17 @@ export const useBundles = () => {
     deleteBundle,
     deleteBundles,
     archiveBundles,
+    unarchiveBundles,
     restoreBundle,
+    restoreBundles,
     permanentlyDeleteBundle,
+    permanentlyDeleteBundles,
     mergeBundles,
     addItemToBundle,
     addItemsToBundle,
     updateItemInBundle,
     duplicateItemInBundle,
+    duplicateItemsInBundle,
     removeItemFromBundle,
     removeItemsFromBundle,
     moveItemInBundle
