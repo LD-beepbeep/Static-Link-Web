@@ -15,6 +15,7 @@ root.render(
   </React.StrictMode>
 );
 
+
 // ✅ Add this BELOW your render code — it won’t break your app.
 if ('serviceWorker' in navigator) {
   // register your service worker
